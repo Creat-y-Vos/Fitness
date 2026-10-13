@@ -1,0 +1,2483 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0B0B0F">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="description" content="VForm — registro de entrenamiento, hábitos y progreso">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>VForm</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='24' fill='%230B0B0F'/%3E%3Cpath d='M25 28 L50 74 L75 28' stroke='%235EE6A8' stroke-width='10' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<style>
+/* ==========================================================================
+   VForm — Design tokens
+   ========================================================================== */
+:root {
+  --bg: #0B0B0F;
+  --surface: #15151B;
+  --elev: #1D1D25;
+  --line: rgba(255,255,255,.07);
+  --line-strong: rgba(255,255,255,.13);
+  --text: #F5F5F7;
+  --dim: #8E8E99;
+  --faint: #5A5A66;
+
+  /* Acentos funcionales por dominio */
+  --mint: #5EE6A8;      /* entreno / peso */
+  --violet: #9D8CFF;    /* dominadas */
+  --coral: #FF7A59;     /* rachas / hábitos */
+  --amber: #FFC663;     /* comidas */
+  --red: #FF5D5D;
+
+  --mint-dim: rgba(94,230,168,.14);
+  --violet-dim: rgba(157,140,255,.14);
+  --coral-dim: rgba(255,122,89,.14);
+  --amber-dim: rgba(255,198,99,.14);
+
+  --radius: 20px;
+  --radius-s: 12px;
+  --pad: 20px;
+  --nav-h: 72px;
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+
+  --ease: cubic-bezier(.22,.9,.3,1);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html { color-scheme: dark; }
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;
+}
+
+button { font-family: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+input, textarea, select { font-family: inherit; font-size: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--mint); outline-offset: 2px; border-radius: 6px; }
+svg { display: block; }
+
+/* ==========================================================================
+   App shell
+   ========================================================================== */
+#app {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: calc(env(safe-area-inset-top) + 22px) var(--pad) calc(var(--nav-h) + env(safe-area-inset-bottom) + 28px);
+  min-height: 100dvh;
+}
+
+/* Navegación inferior */
+nav.tabbar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: calc(var(--nav-h) + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
+  background: rgba(11,11,15,.82);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-top: 1px solid var(--line);
+  display: flex;
+  justify-content: center;
+  z-index: 50;
+}
+nav.tabbar .tabs { display: flex; width: 100%; max-width: 560px; }
+nav.tabbar button {
+  flex: 1;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 3px;
+  color: var(--faint);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  transition: color .25s var(--ease);
+}
+nav.tabbar button svg { width: 23px; height: 23px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+nav.tabbar button.active { color: var(--text); }
+nav.tabbar button.active svg { stroke: var(--mint); }
+
+/* Escritorio: la barra pasa a sidebar */
+@media (min-width: 900px) {
+  #app { max-width: 640px; margin-left: calc(50% - 200px); padding-top: 48px; }
+  nav.tabbar {
+    top: 0; bottom: auto; left: calc(50% - 480px); right: auto;
+    width: 190px; height: 100dvh;
+    border-top: none; border-right: 1px solid var(--line);
+    background: transparent; backdrop-filter: none; -webkit-backdrop-filter: none;
+    align-items: flex-start; padding-top: 56px;
+  }
+  nav.tabbar .tabs { flex-direction: column; gap: 6px; padding: 0 14px; }
+  nav.tabbar button { flex: none; flex-direction: row; justify-content: flex-start; gap: 12px; width: 100%; padding: 11px 14px; border-radius: 12px; font-size: 14px; }
+  nav.tabbar button.active { background: var(--surface); }
+}
+@media (min-width: 900px) and (max-width: 1180px) {
+  nav.tabbar { left: 0; }
+  #app { margin-left: 230px; }
+}
+
+/* ==========================================================================
+   Primitivas
+   ========================================================================== */
+.screen { animation: rise .45s var(--ease) both; }
+@keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: var(--pad);
+  margin-bottom: 14px;
+}
+.card + h2 { margin-top: 30px; }
+
+h1.greet { font-size: 26px; font-weight: 700; letter-spacing: -.02em; }
+.sub { color: var(--dim); font-size: 14px; margin-top: 2px; }
+
+h2 {
+  font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .09em;
+  color: var(--dim); margin: 26px 0 12px 4px;
+}
+
+.eyebrow { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .09em; color: var(--dim); }
+
+/* Métrica héroe: número grande + unidad chica */
+.metric { display: flex; align-items: baseline; gap: 5px; }
+.metric .n { font-size: 34px; font-weight: 700; letter-spacing: -.03em; font-variant-numeric: tabular-nums; line-height: 1; }
+.metric .u { font-size: 13px; font-weight: 600; color: var(--dim); }
+.metric.xl .n { font-size: 46px; }
+
+.row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+
+.pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 11px; border-radius: 999px;
+  font-size: 12px; font-weight: 600;
+  background: var(--elev); color: var(--dim);
+}
+.pill.up { background: var(--mint-dim); color: var(--mint); }
+.pill.down { background: rgba(255,93,93,.13); color: var(--red); }
+.pill.flat { background: var(--elev); color: var(--dim); }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 13px 20px; border-radius: 14px;
+  font-size: 15px; font-weight: 650;
+  background: var(--text); color: #0B0B0F;
+  transition: transform .15s var(--ease), opacity .2s;
+  width: 100%;
+}
+.btn:active { transform: scale(.97); }
+.btn.ghost { background: var(--elev); color: var(--text); border: 1px solid var(--line-strong); }
+.btn.mint { background: var(--mint); color: #06231A; }
+.btn.violet { background: var(--violet); color: #17103A; }
+.btn.small { padding: 8px 14px; font-size: 13px; width: auto; border-radius: 11px; }
+.btn.danger { background: rgba(255,93,93,.12); color: var(--red); }
+.btn[disabled] { opacity: .4; pointer-events: none; }
+
+/* Inputs */
+.field { margin-bottom: 14px; }
+.field label { display: block; font-size: 12px; font-weight: 650; color: var(--dim); margin-bottom: 6px; }
+.field input, .field textarea, .field select {
+  width: 100%; background: var(--elev); border: 1px solid var(--line-strong);
+  border-radius: 12px; padding: 12px 14px; font-size: 16px;
+}
+.field textarea { resize: vertical; min-height: 64px; }
+
+/* Steppers numéricos para series */
+.stepper { display: flex; align-items: center; gap: 0; background: var(--elev); border: 1px solid var(--line-strong); border-radius: 12px; overflow: hidden; }
+.stepper button { width: 42px; height: 44px; font-size: 20px; color: var(--dim); flex-shrink: 0; }
+.stepper button:active { background: rgba(255,255,255,.06); }
+.stepper input { width: 100%; text-align: center; background: none; border: none; font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; padding: 0; -moz-appearance: textfield; }
+.stepper input::-webkit-outer-spin-button, .stepper input::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+/* Anillos */
+.rings { display: flex; justify-content: space-around; gap: 8px; }
+.ring-item { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.ring-item .lbl { font-size: 11px; font-weight: 650; color: var(--dim); letter-spacing: .04em; }
+.ring-wrap { position: relative; }
+.ring-wrap .center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.ring-wrap .center .v { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.ring-wrap .center .s { font-size: 9.5px; color: var(--dim); font-weight: 600; }
+.ring-track { stroke: rgba(255,255,255,.08); }
+.ring-fill { transition: stroke-dashoffset 1s var(--ease); }
+
+/* Camino a la dominada (elemento firma) */
+.rail { position: relative; padding: 6px 0 2px; }
+.rail .track { position: absolute; top: 15px; left: 12px; right: 12px; height: 3px; background: var(--elev); border-radius: 2px; }
+.rail .fill { position: absolute; top: 15px; left: 12px; height: 3px; background: linear-gradient(90deg, var(--violet), var(--mint)); border-radius: 2px; transition: width 1s var(--ease); }
+.rail .stages { display: flex; justify-content: space-between; position: relative; }
+.rail .stage { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 25%; }
+.rail .dot {
+  width: 27px; height: 27px; border-radius: 50%;
+  background: var(--elev); border: 2px solid var(--line-strong);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; transition: all .4s var(--ease);
+  position: relative; z-index: 1;
+}
+.rail .stage.done .dot { background: var(--violet); border-color: var(--violet); color: #17103A; }
+.rail .stage.now .dot { border-color: var(--violet); box-shadow: 0 0 0 5px var(--violet-dim); }
+.rail .stage .t { font-size: 10.5px; font-weight: 650; color: var(--faint); text-align: center; line-height: 1.25; }
+.rail .stage.now .t { color: var(--text); }
+.rail .stage.done .t { color: var(--dim); }
+
+/* Listas de ejercicios / comidas / hábitos */
+.item {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 2px; border-bottom: 1px solid var(--line);
+}
+.item:last-child { border-bottom: none; }
+.item .ico {
+  width: 40px; height: 40px; border-radius: 13px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 18px;
+  background: var(--elev);
+}
+.item .body { flex: 1; min-width: 0; }
+.item .name { font-size: 15px; font-weight: 650; }
+.item .meta { font-size: 12.5px; color: var(--dim); margin-top: 1px; }
+.item .end { flex-shrink: 0; }
+
+/* Check circular */
+.check {
+  width: 30px; height: 30px; border-radius: 50%;
+  border: 2px solid var(--line-strong);
+  display: flex; align-items: center; justify-content: center;
+  transition: all .25s var(--ease);
+  color: transparent;
+}
+.check svg { width: 15px; height: 15px; stroke: currentColor; stroke-width: 3; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.check.on { background: var(--mint); border-color: var(--mint); color: #06231A; }
+.check.on.amber { background: var(--amber); border-color: var(--amber); color: #3A2B08; }
+.check.on.bad { background: var(--red); border-color: var(--red); color: #fff; }
+
+/* Segmented control */
+.seg { display: flex; background: var(--elev); border-radius: 12px; padding: 3px; gap: 3px; margin-bottom: 16px; }
+.seg button { flex: 1; padding: 9px 6px; border-radius: 9px; font-size: 13px; font-weight: 650; color: var(--dim); transition: all .25s var(--ease); }
+.seg button.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 6px rgba(0,0,0,.35); }
+
+/* Serie registrada */
+.setrow { display: grid; grid-template-columns: 30px 1fr 1fr; gap: 10px; align-items: center; margin-bottom: 9px; }
+.setrow.timed { grid-template-columns: 30px 1fr; }
+.setrow .idx { font-size: 12px; font-weight: 700; color: var(--faint); text-align: center; font-variant-numeric: tabular-nums; }
+
+/* Gráficos */
+.chart { width: 100%; height: auto; }
+.chart .axis { stroke: rgba(255,255,255,.07); stroke-width: 1; }
+.chart text { fill: var(--faint); font-size: 10px; font-family: var(--font); font-variant-numeric: tabular-nums; }
+.chart .lbl-end { text-anchor: end; }
+
+/* Modal */
+.modal-root { position: fixed; inset: 0; z-index: 100; display: none; }
+.modal-root.open { display: block; }
+.modal-root .scrim { position: absolute; inset: 0; background: rgba(0,0,0,.6); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); animation: fade .25s both; }
+@keyframes fade { from { opacity: 0; } }
+.modal-root .sheet {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  max-width: 560px; margin: 0 auto;
+  background: var(--surface); border: 1px solid var(--line-strong); border-bottom: none;
+  border-radius: 24px 24px 0 0;
+  padding: 14px 20px calc(24px + env(safe-area-inset-bottom));
+  max-height: 88dvh; overflow-y: auto;
+  animation: sheetUp .4s var(--ease) both;
+}
+@keyframes sheetUp { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+.sheet .grab { width: 36px; height: 4px; border-radius: 2px; background: var(--line-strong); margin: 0 auto 16px; }
+.sheet h3 { font-size: 19px; font-weight: 700; letter-spacing: -.01em; margin-bottom: 16px; }
+
+/* Toast */
+#toast {
+  position: fixed; left: 50%; bottom: calc(var(--nav-h) + 22px + env(safe-area-inset-bottom));
+  transform: translateX(-50%) translateY(12px);
+  background: var(--elev); border: 1px solid var(--line-strong);
+  border-radius: 999px; padding: 10px 20px;
+  font-size: 14px; font-weight: 600;
+  opacity: 0; pointer-events: none;
+  transition: all .3s var(--ease);
+  z-index: 200; white-space: nowrap;
+  box-shadow: 0 8px 30px rgba(0,0,0,.5);
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* Mensajes de coach */
+.coach {
+  border-left: 3px solid var(--mint);
+  padding: 2px 0 2px 14px;
+  margin: 18px 0 4px;
+  font-size: 15px; line-height: 1.5; color: var(--text);
+}
+.coach em { color: var(--mint); font-style: normal; font-weight: 650; }
+
+/* Utilidades */
+.mt8 { margin-top: 8px; } .mt14 { margin-top: 14px; } .mt20 { margin-top: 20px; }
+.dimtext { color: var(--dim); font-size: 13.5px; }
+.small { font-size: 12.5px; }
+.center { text-align: center; }
+.empty { text-align: center; color: var(--faint); padding: 28px 12px; font-size: 14px; }
+.tag { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 3px 8px; border-radius: 6px; }
+.tag.violet { background: var(--violet-dim); color: var(--violet); }
+.tag.mint { background: var(--mint-dim); color: var(--mint); }
+.tag.coral { background: var(--coral-dim); color: var(--coral); }
+.tag.amber { background: var(--amber-dim); color: var(--amber); }
+
+.photo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.photo-grid figure { position: relative; border-radius: 12px; overflow: hidden; aspect-ratio: 3/4; background: var(--elev); }
+.photo-grid img { width: 100%; height: 100%; object-fit: cover; }
+.photo-grid figcaption { position: absolute; bottom: 0; left: 0; right: 0; padding: 14px 8px 6px; font-size: 10px; font-weight: 700; background: linear-gradient(transparent, rgba(0,0,0,.75)); }
+
+.statgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
+.stat .lbl { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--dim); margin-bottom: 8px; }
+/* Cronómetro de series */
+.setrow.chrono { grid-template-columns: 30px 1fr 48px; }
+.tbtn { width: 48px; height: 44px; border-radius: 12px; background: var(--violet-dim); color: var(--violet); font-size: 17px; flex-shrink: 0; }
+.tbtn.run { background: var(--violet); color: #17103A; animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .7; } }
+
+/* Comparador antes/después */
+.compare { position: relative; border-radius: 16px; overflow: hidden; aspect-ratio: 3/4; background: var(--elev); user-select: none; -webkit-user-select: none; }
+.compare img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.compare .top { clip-path: inset(0 calc(100% - var(--cut, 50%)) 0 0); }
+.compare .bar { position: absolute; top: 0; bottom: 0; left: var(--cut, 50%); width: 2px; background: #fff; box-shadow: 0 0 12px rgba(0,0,0,.7); pointer-events: none; }
+.compare .cap { position: absolute; top: 8px; font-size: 10px; font-weight: 800; letter-spacing: .06em; padding: 3px 8px; border-radius: 6px; background: rgba(0,0,0,.55); pointer-events: none; }
+.compare .capA { left: 8px; } .compare .capB { right: 8px; }
+input[type=range].scrub { width: 100%; margin-top: 12px; accent-color: var(--mint); }
+
+/* Salida del coach IA */
+.ai-out { font-size: 14.5px; line-height: 1.6; }
+.ai-out p { margin-bottom: 10px; }
+.ai-out strong { color: var(--mint); }
+code { background: var(--elev); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; font-size: 11.5px; word-break: break-all; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<nav class="tabbar" aria-label="Navegación principal">
+  <div class="tabs" id="tabs"></div>
+</nav>
+
+<div class="modal-root" id="modalRoot" aria-hidden="true">
+  <div class="scrim" data-close></div>
+  <div class="sheet" role="dialog" aria-modal="true" id="sheet"></div>
+</div>
+
+<div id="toast" role="status"></div>
+
+<script>
+"use strict";
+/* ============================================================================
+   VForm — Entrenador personal hacia la primera dominada
+   ----------------------------------------------------------------------------
+   Arquitectura por capas (lista para extraer a módulos ES / migrar a backend):
+
+     CONFIG    → constantes de dominio (rutina, biblioteca de comidas, hábitos)
+     Storage   → adaptador de persistencia (localStorage con fallback en memoria;
+                 misma interfaz que tendría un repositorio remoto)
+     Store     → estado de la app + suscripciones (patrón observable)
+     Services  → lógica de negocio pura (fechas, rachas, progreso, predicción
+                 de dominada, mensajes del coach, estadísticas)
+     UI        → helpers de render, componentes (anillos, gráficos SVG, modal)
+     Screens   → una función de render por pantalla
+     Router    → navegación por pestañas
+
+   El modelo de datos está versionado (state.version) y todo pasa por
+   Storage.save/load, de modo que migrar a IndexedDB o a una API solo
+   requiere reemplazar el adaptador.
+   ============================================================================ */
+
+/* ==========================================================================
+   CONFIG — dominio
+   ========================================================================== */
+const CONFIG = {
+  version: 1,
+
+  // Proyecto de Supabase de la app. La anon key es pública por diseño:
+  // lo que protege los datos es RLS (cada cuenta solo lee y escribe su fila).
+  cloud: {
+    url: "https://bbmzitdwzqzyoaowdebp.supabase.co",
+    key: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJibXppdGR3enF6eW9hb3dkZWJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE5MDE0OTIsImV4cCI6MjEwNzQ3NzQ5Mn0.9x9h-lHdVbezftef91YgxqQi2SKeL_GBoKdrWAY-azs",
+  },
+  storageKey: "vform.v1",
+
+  goal: {
+    startWeight: 80,
+    targetWeight: 75,
+    targetDateISO: "2026-12-31",
+    hangTargetSecs: 90,
+    pullupTarget: 5,   // reps estrictas en una sola serie
+    label: "Espalda en V · primera dominada · −6 kg",
+  },
+
+  // Catálogo de ejercicios del plan de gimnasio.
+  // type: "kgreps" (kilos × repeticiones) | "reps" | "secs"
+  // ref = carga de referencia (kg) · step = salto de carga · noScale = no se reduce en la reentrada
+  exercises: [
+    { id: "dominada",       name: "Dominada estricta",        type: "reps",   icon: "🧗", cue: "Sin balanceo. 2–3 intentos al inicio, fresco, parando antes del fallo", sets: 3, reps: "2–3", noScale: true },
+    { id: "dominada-asist", name: "Dominada asistida",        type: "kgreps", unit: "kg de asistencia", icon: "🪢", cue: "Menos asistencia = más fuerte", sets: 3, reps: "5", ref: 50, step: 2.5, noScale: true, assist: true },
+    { id: "banca",          name: "Press de banca con barra", type: "kgreps", unit: "kg por lado",       icon: "🏋️", cue: "Escápulas atrás, pies firmes", sets: 3, reps: "8–10", ref: 20, step: 2.5 },
+    { id: "jalon",          name: "Jalón al pecho",           type: "kgreps", unit: "kg",                icon: "⬇️", cue: "Pecho arriba, codos hacia abajo", sets: 3, reps: "8–12", ref: 66, step: 1 },
+    { id: "inclinado",      name: "Press inclinado con mancuernas", type: "kgreps", unit: "kg por mancuerna", icon: "📐", cue: "Controlá la bajada, pecho abierto", sets: 3, reps: "8–12", ref: 17.5, step: 2.5 },
+    { id: "remo",           name: "Remo en máquina/polea",    type: "kgreps", unit: "kg",                icon: "🚣", cue: "Grosor de espalda: tirá con los codos", sets: 3, reps: "8–12", ref: 66, step: 1 },
+    { id: "laterales",      name: "Elevaciones laterales",    type: "kgreps", unit: "kg por mancuerna", icon: "🪽", cue: "Controladas, sin lanzar la mancuerna", sets: 3, reps: "12–15", ref: 5, step: 1 },
+    { id: "triceps",        name: "Tríceps en polea",         type: "kgreps", unit: "kg",                icon: "🔻", cue: "Codos pegados al cuerpo", sets: 2, reps: "10–15", ref: 41, step: 1 },
+    { id: "curl",           name: "Curl de bíceps",           type: "kgreps", unit: "kg por mancuerna", icon: "💪", cue: "Sin balancear el torso", sets: 2, reps: "10–15", ref: 8.75, step: 1.25 },
+    { id: "pecho-maq",      name: "Press de pecho en máquina", type: "kgreps", unit: "kg",               icon: "🫸", cue: "Hombros atrás y abajo", sets: 3, reps: "10", ref: 52, step: 1 },
+    { id: "jalon-abierto",  name: "Jalón agarre abierto",     type: "kgreps", unit: "kg",                icon: "🪂", cue: "Ancho de espalda: codos hacia los costados", sets: 3, reps: "8", ref: 59, step: 1 },
+    { id: "press-hombros",  name: "Press de hombros con mancuernas", type: "kgreps", unit: "kg por mancuerna", icon: "🙌", cue: "Costillas abajo, sin arquear", sets: 3, reps: "10–12", ref: 15, step: 2.5 },
+    { id: "face-pull",      name: "Face pull",                type: "kgreps", unit: "kg",                icon: "🎯", cue: "Liviano, hombro posterior y postura", sets: 3, reps: "12–15", ref: null, step: 1 },
+    { id: "prensa",         name: "Prensa de piernas",        type: "kgreps", unit: "kg",                icon: "🦵", cue: "Rango cómodo, sin despegar la cadera", sets: 3, reps: "10", ref: 100, step: 5 },
+    { id: "curl-femoral",   name: "Curl femoral en máquina",  type: "kgreps", unit: "kg",                icon: "🦿", cue: "Liviano al principio, buena técnica", sets: 3, reps: "10–12", ref: null, step: 1 },
+    { id: "crunch",         name: "Crunch en polea",          type: "kgreps", unit: "kg",                icon: "🧱", cue: "Enrollá el torso, no tires con los brazos", sets: 3, reps: "15", ref: 45, step: 5 },
+    { id: "plancha",        name: "Plancha",                  type: "secs",   icon: "🧱", cue: "Abdomen apretado, sin arquear", sets: 3, reps: "30–45 s" },
+    { id: "bird-dog",       name: "Bird-dog",                 type: "reps",   icon: "🐕", cue: "Lento, columna neutra", sets: 2, reps: "10 por lado" },
+  ],
+
+  // Ejercicios del plan anterior (calistenia): se conservan para que el historial se siga viendo
+  legacyExercises: [
+    { id: "colgado",    name: "Colgado de barra",   type: "secs", icon: "🧗", cue: "Hombros activos, cuerpo firme" },
+    { id: "australian", name: "Australian Pull Up", type: "reps", icon: "🤸", cue: "Pecho a la barra, escápulas juntas" },
+    { id: "flexiones",  name: "Flexiones",          type: "reps", icon: "💪", cue: "Cuerpo en línea, codos a 45°" },
+    { id: "fondos",     name: "Fondos",             type: "reps", icon: "🔻", cue: "Bajá controlado, subí con fuerza" },
+  ],
+
+  daily: [
+    { id: "caminata",   name: "Caminata",   icon: "🚶", meta: "30–45 min a paso firme" },
+    { id: "movilidad",  name: "Movilidad",  icon: "🌀", meta: "Hombros, cadera y columna" },
+    { id: "elongacion", name: "Elongación", icon: "🧘", meta: "Dorsales, pecho e isquios" },
+  ],
+
+  // Plan por fases. Todo arranca el día que se toca "Empezar la vuelta" (profile.returnDate).
+  // days: día de la semana (0 = domingo … 6 = sábado) → sesión
+  plan: {
+    phases: [
+      { id: 1, name: "Reentrada", weeks: "semanas 1–2", factor: 0.675, setsCap: 2,
+        rule: "65–70 % de tus cargas, 3–4 repeticiones en reserva y sin llegar al fallo. Cardio: solo caminata suave.",
+        days: { 1: "torsoA", 3: "piernas", 5: "torsoB" } },
+      { id: 2, name: "Reconstrucción", weeks: "semanas 3–4", factor: 0.85, setsCap: null,
+        rule: "85 % de tus cargas, series completas y 2 repeticiones en reserva.",
+        days: { 1: "torsoA", 2: "piernas", 4: "torsoB", 5: "torsoV" } },
+      { id: 3, name: "Progresión", weeks: "semana 5 en adelante", factor: 1, setsCap: null,
+        rule: "Tus pesos de referencia. Doble progresión: primero 10/10/10, después 12/12/12 y recién ahí subís kilos.",
+        days: { 1: "torsoA", 2: "piernas", 3: "torsoB", 5: "full" }, cardio: [4] },
+    ],
+    sessions: {
+      torsoA:  { name: "Torso A", sub: "Pecho · espalda · hombros",
+                 ex: ["dominada", "banca", "jalon", "inclinado", "remo", "laterales", "triceps", "curl"],
+                 exP1: ["jalon", "remo", "pecho-maq", "laterales"] },
+      torsoB:  { name: "Torso B", sub: "Espalda · pecho · hombros",
+                 ex: ["dominada", "remo", "pecho-maq", "jalon-abierto", "press-hombros", "laterales"],
+                 exP1: ["dominada-asist", "inclinado", "press-hombros", "face-pull"] },
+      torsoV:  { name: "Torso V", sub: "Espalda ancha y hombros",
+                 ex: ["dominada-asist", "jalon-abierto", "remo", "press-hombros", "laterales", "face-pull"] },
+      piernas: { name: "Piernas y core", sub: "Piernas · abdomen",
+                 ex: ["prensa", "curl-femoral", "plancha", "bird-dog"] },
+      full:    { name: "Full body + V", sub: "Cuerpo completo",
+                 ex: ["dominada-asist", "inclinado", "remo", "prensa", "laterales", "crunch"] },
+    },
+  },
+
+  // Punto de partida de dominadas (sesiones previas a la app)
+  baseline: { pullupReps: 2, assistKg: 50 },
+
+  // Etapas hacia la dominada, según mejor tiempo de colgado
+  pullupStages: [
+    { min: 0,  label: "Colgado pasivo",   icon: "1", tip: "Sumá segundos colgado. Base de agarre y hombro." },
+    { min: 30, label: "Colgado activo",   icon: "2", tip: "Deprimí escápulas colgado. Sumá Australian estrictas." },
+    { min: 60, label: "Negativas",        icon: "3", tip: "Saltá arriba y bajá en 3–5 s controlados." },
+    { min: 90, label: "Primera dominada", icon: "★", tip: "Estás en zona de intento. Probá cada sesión, fresco." },
+  ],
+
+  meals: {
+    desayuno: [
+      { id: "huevos",   name: "Huevos",   icon: "🥚" },
+      { id: "tostadas", name: "Tostadas", icon: "🍞" },
+      { id: "tomate",   name: "Tomate",   icon: "🍅" },
+      { id: "aguacate", name: "Aguacate", icon: "🥑" },
+      { id: "yogur",    name: "Yogur",    icon: "🥣" },
+      { id: "proteina", name: "Proteína", icon: "🥤" },
+      { id: "avena",    name: "Avena",    icon: "🌾" },
+      { id: "fruta",    name: "Fruta",    icon: "🍎" },
+    ],
+    comida: [
+      { id: "pollo-arroz", name: "Pollo · arroz · verduras", icon: "🍗" },
+      { id: "ternera-patata", name: "Ternera · patata", icon: "🥩" },
+      { id: "atun-ensalada", name: "Atún · ensalada", icon: "🐟" },
+      { id: "lomo-cerdo", name: "Lomo de cerdo", icon: "🍖" },
+    ],
+    cena: [
+      { id: "salmon", name: "Salmón", icon: "🐠" },
+      { id: "tortilla", name: "Tortilla francesa", icon: "🍳" },
+      { id: "carne-magra", name: "Carne magra", icon: "🥩" },
+      { id: "milanesas", name: "Milanesas de carré de cerdo", icon: "🍽️" },
+    ],
+  },
+
+  // Hábitos: kind "good" suma racha al marcarse; "avoid" suma racha al NO marcarse
+  habits: [
+    { id: "agua",     name: "Agua",        icon: "💧", kind: "good",  meta: "2 litros o más" },
+    { id: "proteina", name: "Proteína",    icon: "🍳", kind: "good",  meta: "En cada comida" },
+    { id: "creatina", name: "Creatina",    icon: "⚡", kind: "good",  meta: "5 g diarios" },
+    { id: "coca",     name: "Coca-Cola",   icon: "🥤", kind: "avoid", meta: "Marcá solo si tomaste" },
+    { id: "vino",     name: "Vino",        icon: "🍷", kind: "avoid", meta: "Marcá solo si tomaste" },
+    { id: "sueno",    name: "Dormí bien",  icon: "😴", kind: "good",  meta: "7 horas o más" },
+    { id: "entrene",  name: "Entrené",     icon: "🏋️", kind: "good",  meta: "Sesión completa" },
+    { id: "camine",   name: "Caminé",      icon: "🚶", kind: "good",  meta: "Caminata del día" },
+  ],
+
+  measures: [
+    { id: "cintura", name: "Cintura" },
+    { id: "panza",   name: "Panza" },
+    { id: "pecho",   name: "Pecho" },
+    { id: "hombros", name: "Hombros" },
+    { id: "brazos",  name: "Brazos" },
+    { id: "piernas", name: "Piernas" },
+  ],
+};
+
+/* ==========================================================================
+   Storage — adaptador de persistencia
+   --------------------------------------------------------------------------
+   Interfaz mínima (load/save/exportJSON/importJSON). Si localStorage no está
+   disponible (modo incógnito, vista previa embebida), degrada a memoria y lo
+   informa. Para migrar a IndexedDB o a una API, se reemplaza solo esta capa.
+   ========================================================================== */
+const Storage = (() => {
+  let memory = null;
+  let persistent = true;
+  let ns = null; // id de usuario logueado; null = invitado (datos locales del dispositivo)
+  try {
+    const k = "__vform_test__";
+    localStorage.setItem(k, "1");
+    localStorage.removeItem(k);
+  } catch (_) { persistent = false; }
+
+  const key = () => CONFIG.storageKey + (ns ? ".u." + ns : "");
+
+  return {
+    get persistent() { return persistent; },
+    setNamespace(userId) { ns = userId || null; memory = null; },
+    load() {
+      if (!persistent) return memory;
+      try { return JSON.parse(localStorage.getItem(key())); }
+      catch (_) { return null; }
+    },
+    save(state) {
+      if (!persistent) { memory = state; return; }
+      try { localStorage.setItem(key(), JSON.stringify(state)); }
+      catch (e) { console.warn("No se pudo guardar:", e); UI.toast("⚠️ Almacenamiento lleno"); }
+    },
+    exportJSON(state) {
+      const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `vform-respaldo-${Dates.todayKey()}.json`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    },
+    importJSON(file, onDone) {
+      const r = new FileReader();
+      r.onload = () => {
+        try {
+          const data = JSON.parse(r.result);
+          if (!data || typeof data !== "object" || !data.version) throw new Error("formato");
+          onDone(data);
+        } catch (_) { UI.toast("Archivo no válido"); }
+      };
+      r.readAsText(file);
+    },
+  };
+})();
+
+/* ==========================================================================
+   Conn — configuración del dispositivo (no viaja con los datos de usuario)
+   API keys y URL del proyecto viven acá, fuera del estado sincronizable.
+   ========================================================================== */
+const Conn = (() => {
+  const KEY = "vform.conn";
+  let data = { geminiKey: "", supabaseUrl: CONFIG.cloud.url, supabaseKey: CONFIG.cloud.key };
+  try { data = Object.assign(data, JSON.parse(localStorage.getItem(KEY)) || {}); } catch (_) {}
+  if (!data.supabaseUrl) data.supabaseUrl = CONFIG.cloud.url;
+  if (!data.supabaseKey) data.supabaseKey = CONFIG.cloud.key;
+  return {
+    get: () => data,
+    set(patch) {
+      Object.assign(data, patch);
+      try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (_) {}
+    },
+  };
+})();
+
+/* ==========================================================================
+   Auth — cuentas con Supabase Auth (email + contraseña)
+   Sesión persistida en el dispositivo; refresh automático del token.
+   ========================================================================== */
+const Auth = (() => {
+  const KEY = "vform.session";
+  let session = null;
+  try { session = JSON.parse(localStorage.getItem(KEY)); } catch (_) {}
+
+  const base = () => Conn.get().supabaseUrl.trim().replace(/\/+$/, "") + "/auth/v1";
+  const headers = () => ({ apikey: Conn.get().supabaseKey.trim(), "Content-Type": "application/json" });
+  const persist = s => {
+    session = s;
+    try { s ? localStorage.setItem(KEY, JSON.stringify(s)) : localStorage.removeItem(KEY); } catch (_) {}
+  };
+  const store = j => persist({
+    access_token: j.access_token,
+    refresh_token: j.refresh_token,
+    expires_at: Date.now() + ((j.expires_in || 3600) - 60) * 1000,
+    user: { id: j.user.id, email: j.user.email },
+  });
+
+  return {
+    get user() { return session?.user || null; },
+
+    async signUp(email, password) {
+      const res = await fetch(base() + "/signup", { method: "POST", headers: headers(), body: JSON.stringify({ email, password }) });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j.msg || j.error_description || j.message || ("HTTP " + res.status));
+      if (j.access_token) store(j); // si el proyecto no exige confirmación por email
+      return j;
+    },
+
+    async signIn(email, password) {
+      const res = await fetch(base() + "/token?grant_type=password", { method: "POST", headers: headers(), body: JSON.stringify({ email, password }) });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j.error_description || j.msg || j.message || ("HTTP " + res.status));
+      store(j);
+      return j;
+    },
+
+    // Token vigente; si venció, lo renueva con el refresh_token
+    async token() {
+      if (!session) throw new Error("sin sesión");
+      if (Date.now() < session.expires_at) return session.access_token;
+      const res = await fetch(base() + "/token?grant_type=refresh_token", { method: "POST", headers: headers(), body: JSON.stringify({ refresh_token: session.refresh_token }) });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) { persist(null); throw new Error("sesión vencida — entrá de nuevo"); }
+      store(j);
+      return session.access_token;
+    },
+
+    signOut() { persist(null); },
+  };
+})();
+
+// Si hay sesión guardada, el Store nace ya en el espacio de ese usuario
+if (Auth.user) Storage.setNamespace(Auth.user.id);
+
+
+/* ==========================================================================
+   Store — estado + suscripciones
+   ========================================================================== */
+const Store = (() => {
+  const blank = () => ({
+    version: CONFIG.version,
+    createdAt: new Date().toISOString(),
+    profile: { ...CONFIG.goal },
+    weights: [],        // [{date:"YYYY-MM-DD", kg:Number}]
+    measurements: [],   // [{date, cintura, pecho, hombros, brazos, piernas}]
+    photos: [],         // [{date, dataUrl, note}]
+    workouts: [],       // [{id, date, exercises:{exId:{sets:[{reps|secs, obs}]}}, note}]
+    meals: {},          // {"YYYY-MM-DD": {desayuno:[ids], comida:[ids], cena:[ids]}}
+    habits: {},         // {"YYYY-MM-DD": {habitId:true}}
+    dailyDone: {},      // {"YYYY-MM-DD": {caminata:true, movilidad:true, elongacion:true}}
+    coachSeen: {},      // {"YYYY-MM-DD": msgIndex} para no repetir mensajes
+    settings: { geminiKey: "", supabaseUrl: "", supabaseKey: "" },
+    aiCache: {},        // {"YYYY-MM-DD": análisis del coach IA}
+  });
+
+  let state = Storage.load() || blank();
+  const ensure = st => {
+    st.settings = Object.assign({ geminiKey: "", supabaseUrl: "", supabaseKey: "" }, st.settings || {});
+    st.aiCache = st.aiCache || {};
+    st.updatedAt = st.updatedAt || new Date().toISOString();
+    return st;
+  };
+  state = ensure(state);
+  // Migrar claves guardadas en versiones anteriores (vivían en el estado) a Conn
+  {
+    const s = state.settings, c = Conn.get();
+    if ((s.geminiKey || s.supabaseUrl || s.supabaseKey) && !c.geminiKey && !c.supabaseUrl && !c.supabaseKey) {
+      Conn.set({ geminiKey: s.geminiKey || "", supabaseUrl: s.supabaseUrl || "", supabaseKey: s.supabaseKey || "" });
+    }
+  }
+  // Migraciones futuras: if (state.version < 2) { ...; state.version = 2; }
+
+  const subs = new Set();
+
+  return {
+    get s() { return state; },
+    commit() { state.updatedAt = new Date().toISOString(); Storage.save(state); subs.forEach(fn => fn(state)); },
+    replace(next) { state = ensure(next); this.commit(); },
+    // Recarga desde el namespace activo (cambio de usuario) sin pisar updatedAt
+    reload() { state = ensure(Storage.load() || blank()); subs.forEach(fn => fn(state)); },
+    reset() { state = blank(); this.commit(); },
+    subscribe(fn) { subs.add(fn); return () => subs.delete(fn); },
+  };
+})();
+
+/* ==========================================================================
+   Services — lógica de negocio pura
+   ========================================================================== */
+
+/* ---- Fechas ---- */
+const Dates = {
+  key(d) {
+    const x = d instanceof Date ? d : new Date(d + "T12:00:00");
+    return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,"0")}-${String(x.getDate()).padStart(2,"0")}`;
+  },
+  todayKey() { return this.key(new Date()); },
+  addDays(key, n) { const d = new Date(key + "T12:00:00"); d.setDate(d.getDate()+n); return this.key(d); },
+  daysBetween(a, b) { return Math.round((new Date(b+"T12:00:00") - new Date(a+"T12:00:00")) / 864e5); },
+  weekday(key) { return new Date(key + "T12:00:00").getDay(); },
+  fmt(key, opts) {
+    return new Date(key + "T12:00:00").toLocaleDateString("es", opts || { day: "numeric", month: "short" });
+  },
+  fmtLong(key) { return this.fmt(key, { weekday: "long", day: "numeric", month: "long" }); },
+  isTrainingDay(key) { return !!Plan.sessionFor(key); },
+  nextTrainingDay(fromKey) {
+    let k = fromKey;
+    for (let i = 0; i < 8; i++) { if (this.isTrainingDay(k)) return k; k = this.addDays(k, 1); }
+    return fromKey;
+  },
+};
+
+/* ---- Ejercicios (plan actual + historial legacy) ---- */
+const Ex = {
+  all() { return [...CONFIG.exercises, ...CONFIG.legacyExercises]; },
+  get(id) { return this.all().find(e => e.id === id) || null; },
+  setText(ex, sets) {
+    return sets.map(s => ex.type === "kgreps" ? `${s.kg ?? 0}×${s.v}` : ex.type === "secs" ? `${s.v}s` : `${s.v}`).join(" · ");
+  },
+};
+
+/* ---- Plan por fases ---- */
+const Plan = {
+  start() { return Store.s.profile.returnDate || null; },
+  started() { return !!this.start(); },
+  setStart(key) { Store.s.profile.returnDate = key || null; Store.commit(); },
+  phaseId(key = Dates.todayKey()) {
+    const s = this.start();
+    if (!s) return 1;
+    const d = Dates.daysBetween(s, key);
+    return d < 14 ? 1 : d < 28 ? 2 : 3;
+  },
+  phase(key) { return CONFIG.plan.phases.find(p => p.id === this.phaseId(key)); },
+  sessionFor(key) {
+    const ph = this.phase(key);
+    const sid = ph.days[Dates.weekday(key)];
+    if (!sid) return null;
+    const s = CONFIG.plan.sessions[sid];
+    return { id: sid, name: s.name, sub: s.sub, ex: (ph.id === 1 && s.exP1) ? s.exP1 : s.ex, phase: ph };
+  },
+  isCardio(key) { const ph = this.phase(key); return !!(ph.cardio && ph.cardio.includes(Dates.weekday(key))); },
+  setsFor(ex, key) { const ph = this.phase(key); return ph.setsCap ? Math.min(ph.setsCap, ex.sets) : ex.sets; },
+  suggestKg(ex, key) {
+    if (ex.ref == null) return null;
+    const f = ex.noScale ? 1 : this.phase(key).factor;
+    const st = ex.step || 1;
+    return +(Math.round(ex.ref * f / st) * st).toFixed(2);
+  },
+  weekLabel() {
+    const ph = this.phase();
+    const n = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+    const order = k => (k + 6) % 7;
+    const days = Object.keys(ph.days).map(Number).sort((a, b) => order(a) - order(b)).map(k => n[k]).join(" · ");
+    return days + (ph.cardio ? " · caminata " + ph.cardio.map(k => n[k]).join(", ") : "");
+  },
+  progressText() {
+    const s = this.start();
+    if (!s) return "";
+    const d = Math.max(0, Dates.daysBetween(s, Dates.todayKey()));
+    return `Semana ${Math.floor(d / 7) + 1} desde el ${Dates.fmt(s)}`;
+  },
+};
+
+/* ---- Progreso de peso y objetivo ---- */
+const Progress = {
+  latestWeight() {
+    const w = [...Store.s.weights].sort((a,b) => a.date < b.date ? -1 : 1);
+    return w.length ? w[w.length-1] : null;
+  },
+  firstWeight() {
+    const w = [...Store.s.weights].sort((a,b) => a.date < b.date ? -1 : 1);
+    return w.length ? w[0] : { kg: Store.s.profile.startWeight, date: null };
+  },
+  currentKg() {
+    const l = this.latestWeight();
+    return l ? l.kg : Store.s.profile.startWeight;
+  },
+  lostKg() {
+    return Math.max(0, this.firstWeight().kg - this.currentKg());
+  },
+  weightPct() {
+    const p = Store.s.profile;
+    const total = p.startWeight - p.targetWeight;
+    if (total <= 0) return 0;
+    return Math.min(100, Math.max(0, ((p.startWeight - this.currentKg()) / total) * 100));
+  },
+  // % global del objetivo: mitad peso, mitad camino a la dominada
+  goalPct() {
+    return Math.round(this.weightPct() * 0.5 + Pullup.pct() * 0.5);
+  },
+  weekTrend() {
+    const w = [...Store.s.weights].sort((a,b) => a.date < b.date ? -1 : 1);
+    if (w.length < 2) return null;
+    const last = w[w.length-1];
+    const weekAgo = Dates.addDays(last.date, -7);
+    const prev = [...w].reverse().find(x => x.date <= weekAgo) || w[0];
+    if (prev.date === last.date) return null;
+    return +(last.kg - prev.kg).toFixed(1);
+  },
+};
+
+/* ---- Entrenamiento ---- */
+const Workouts = {
+  byDate(key) { return Store.s.workouts.find(w => w.date === key) || null; },
+  sorted() { return [...Store.s.workouts].sort((a,b) => a.date < b.date ? -1 : 1); },
+  previousBefore(key) {
+    return this.sorted().filter(w => w.date < key).pop() || null;
+  },
+  // Volumen por ejercicio en una sesión: suma de reps o de segundos
+  volume(workout, exId) {
+    const ex = workout?.exercises?.[exId];
+    if (!ex || !ex.sets?.length) return 0;
+    return ex.sets.reduce((s, set) => s + (Number(set.v) || 0), 0);
+  },
+  bestSet(workout, exId) {
+    const ex = workout?.exercises?.[exId];
+    if (!ex || !ex.sets?.length) return 0;
+    return Math.max(...ex.sets.map(s => Number(s.v) || 0));
+  },
+  totalSets(workout) {
+    return Object.values(workout.exercises || {}).reduce((s, e) => s + (e.sets?.length || 0), 0);
+  },
+  // Métrica de progreso por ejercicio: tonelaje (kg×reps) si hay carga; si no, repeticiones/segundos
+  metric(workout, ex) {
+    const e = workout?.exercises?.[ex.id];
+    if (!e || !e.sets?.length) return 0;
+    if (ex.type === "kgreps" && !ex.assist)
+      return e.sets.reduce((s, x) => s + (Number(x.kg) || 0) * (Number(x.v) || 0), 0);
+    return e.sets.reduce((s, x) => s + (Number(x.v) || 0), 0);
+  },
+  // Series de la última sesión anterior a `key` que incluya el ejercicio
+  lastSets(exId, key) {
+    const w = this.sorted().filter(x => x.date < key && x.exercises?.[exId]?.sets?.length).pop();
+    return w ? w.exercises[exId].sets : [];
+  },
+  describe(workout) {
+    return Ex.all().map(ex => {
+      const sets = workout.exercises?.[ex.id]?.sets;
+      return sets?.length ? `${ex.name} ${Ex.setText(ex, sets)}${ex.type === "kgreps" ? ` (${ex.unit})` : ""}` : null;
+    }).filter(Boolean).join(", ");
+  },
+  // Comparación contra la sesión anterior → [{ex, now, before, delta}]
+  compare(workout) {
+    const prev = this.previousBefore(workout.date);
+    if (!prev) return null;
+    return Ex.all().map(ex => {
+      const now = this.metric(workout, ex);
+      const before = this.metric(prev, ex);
+      if (!now && !before) return null;
+      return { ex, now, before, delta: now - before };
+    }).filter(Boolean);
+  },
+  trainingStreak() {
+    // Racha: sesiones consecutivas sin fallar ningún día programado (L-M-V).
+    // Toda sesión suma (aunque sea un día extra); la racha se corta solo
+    // cuando un día de entrenamiento pasó sin sesión.
+    let streak = 0;
+    let k = Dates.todayKey();
+    if (!this.byDate(k)) k = Dates.addDays(k, -1); // hoy todavía puede entrenar
+    for (let i = 0; i < 366; i++) {
+      if (this.byDate(k)) streak++;
+      else if (Dates.isTrainingDay(k)) break;
+      k = Dates.addDays(k, -1);
+    }
+    return streak;
+  },
+  daysTrained() { return Store.s.workouts.length; },
+};
+
+/* ---- Dominadas: progreso, etapa y predicción ---- */
+const Pullup = {
+  // Serie histórica del mejor colgado por sesión
+  hangHistory() {
+    return Workouts.sorted()
+      .map(w => ({ date: w.date, secs: Workouts.bestSet(w, "colgado") }))
+      .filter(h => h.secs > 0);
+  },
+  bestHang() {
+    const h = this.hangHistory();
+    return h.length ? Math.max(...h.map(x => x.secs)) : 0;
+  },
+  latestHang() {
+    const h = this.hangHistory();
+    return h.length ? h[h.length-1].secs : 0;
+  },
+  // Dominadas con el plan de gimnasio: reps estrictas y asistencia
+  repsHistory() {
+    return Workouts.sorted().map(w => ({ date: w.date, reps: Workouts.bestSet(w, "dominada") })).filter(h => h.reps > 0);
+  },
+  bestReps() {
+    return Math.max(CONFIG.baseline.pullupReps, ...this.repsHistory().map(h => h.reps));
+  },
+  assistHistory() {
+    return Workouts.sorted().map(w => {
+      const sets = (w.exercises?.["dominada-asist"]?.sets || []).filter(s => s.v > 0);
+      return { date: w.date, kg: sets.length ? Math.min(...sets.map(s => Number(s.kg) || 0)) : null };
+    }).filter(h => h.kg !== null);
+  },
+  bestAssist() {
+    return Math.min(CONFIG.baseline.assistKg, ...this.assistHistory().map(h => h.kg));
+  },
+  pct() {
+    return Math.min(100, (this.bestReps() / CONFIG.goal.pullupTarget) * 100);
+  },
+  stage() {
+    const best = this.bestHang();
+    let idx = 0;
+    CONFIG.pullupStages.forEach((s, i) => { if (best >= s.min) idx = i; });
+    return { idx, ...CONFIG.pullupStages[idx] };
+  },
+  // Regresión lineal sobre los últimos colgados → fecha estimada de 90 s
+  prediction() {
+    const h = this.hangHistory().slice(-10);
+    if (h.length < 3) return { ready: false, need: 3 - h.length };
+    const t0 = new Date(h[0].date + "T12:00:00").getTime();
+    const pts = h.map(x => ({ x: (new Date(x.date+"T12:00:00").getTime() - t0) / 864e5, y: x.secs }));
+    const n = pts.length;
+    const sx = pts.reduce((s,p)=>s+p.x,0), sy = pts.reduce((s,p)=>s+p.y,0);
+    const sxy = pts.reduce((s,p)=>s+p.x*p.y,0), sxx = pts.reduce((s,p)=>s+p.x*p.x,0);
+    const denom = n*sxx - sx*sx;
+    if (!denom) return { ready: false, flat: true };
+    const slope = (n*sxy - sx*sy) / denom;           // segundos ganados por día
+    const intercept = (sy - slope*sx) / n;
+    if (slope <= 0.05) return { ready: true, slope, stalled: true };
+    const target = CONFIG.goal.hangTargetSecs;
+    const daysToTarget = (target - intercept) / slope;
+    const dateKey = Dates.addDays(Dates.key(new Date(t0)), Math.ceil(daysToTarget));
+    const daysLeft = Math.max(0, Dates.daysBetween(Dates.todayKey(), dateKey));
+    return { ready: true, slope, dateKey, daysLeft, stalled: false };
+  },
+  shouldProgress() {
+    // Aviso de subir dificultad: 3 sesiones seguidas superando el umbral de la etapa siguiente
+    const stages = CONFIG.pullupStages;
+    const st = this.stage();
+    if (st.idx >= stages.length - 1) return null;
+    const nextMin = stages[st.idx + 1].min;
+    const recent = this.hangHistory().slice(-3);
+    if (recent.length === 3 && recent.every(h => h.secs >= nextMin)) {
+      return stages[st.idx + 1];
+    }
+    return null;
+  },
+};
+
+/* ---- Hábitos y rachas ---- */
+const Habits = {
+  get(dateKey) { return Store.s.habits[dateKey] || {}; },
+  toggle(dateKey, id) {
+    const day = { ...(Store.s.habits[dateKey] || {}) };
+    day[id] = !day[id];
+    if (!day[id]) delete day[id];
+    Store.s.habits[dateKey] = day;
+    Store.commit();
+  },
+  // Racha de un hábito. good: días seguidos marcado. avoid: días seguidos SIN marcar
+  streak(id) {
+    const def = CONFIG.habits.find(h => h.id === id);
+    if (!def) return 0;
+    const first = this.firstLogDate();
+    if (!first) return 0;
+    let streak = 0;
+    let k = Dates.todayKey();
+    const todayVal = !!this.get(k)[id];
+    if (def.kind === "good" && !todayVal) k = Dates.addDays(k, -1); // hoy todavía puede cumplir
+    for (let i = 0; i < 730; i++) {
+      if (k < first) break;
+      const v = !!this.get(k)[id];
+      const ok = def.kind === "good" ? v : !v;
+      if (ok) streak++; else break;
+      k = Dates.addDays(k, -1);
+    }
+    return streak;
+  },
+  firstLogDate() {
+    const keys = Object.keys(Store.s.habits).sort();
+    const wDates = Store.s.workouts.map(w => w.date).sort();
+    const cands = [keys[0], wDates[0]].filter(Boolean).sort();
+    return cands[0] || null;
+  },
+  daysWithoutCoke() { return this.streak("coca"); },
+};
+
+/* ---- Estadísticas globales ---- */
+const Stats = {
+  totalSets() { return Store.s.workouts.reduce((s,w) => s + Workouts.totalSets(w), 0); },
+  totalReps() {
+    return Store.s.workouts.reduce((s,w) =>
+      s + Ex.all().filter(e => e.type !== "secs")
+            .reduce((a,e) => a + Workouts.volume(w, e.id), 0), 0);
+  },
+  totalHangSecs() {
+    return Store.s.workouts.reduce((s,w) => s + Workouts.volume(w, "colgado"), 0);
+  },
+  weeklyWorkoutCounts(nWeeks = 8) {
+    // [{label, count}] de las últimas nWeeks semanas
+    const out = [];
+    let end = Dates.todayKey();
+    for (let i = 0; i < nWeeks; i++) {
+      const start = Dates.addDays(end, -6);
+      const count = Store.s.workouts.filter(w => w.date >= start && w.date <= end).length;
+      out.unshift({ label: Dates.fmt(start), count });
+      end = Dates.addDays(start, -1);
+    }
+    return out;
+  },
+};
+
+/* ---- Coach: mensajes según progreso real, sin repetición ---- */
+const Coach = {
+  pool() {
+    const kg = Progress.lostKg().toFixed(1);
+    const cur = Progress.currentKg().toFixed(1);
+    const left = Math.max(0, Progress.currentKg() - Store.s.profile.targetWeight).toFixed(1);
+    const reps = Pullup.bestReps();
+    const streak = Workouts.trainingStreak();
+    const coke = Habits.daysWithoutCoke();
+    const daysToDec = Math.max(0, Dates.daysBetween(Dates.todayKey(), Store.s.profile.targetDateISO));
+    const pred = Pullup.prediction();
+    const stage = Pullup.stage();
+    const trend = Progress.weekTrend();
+
+    const msgs = [];
+    // Basados en datos concretos: solo entran si el dato existe
+    if (kg > 0) msgs.push(`Ya dejaste atrás <em>${kg} kg</em>. Faltan ${left}. El cuerpo que buscás se construye exactamente así: sesión a sesión.`);
+    if (reps > 0) msgs.push(`Tu mejor serie de dominadas estrictas es de <em>${reps}</em>. Cada repetición nueva es espalda ancha que se nota.`);
+    if (reps < CONFIG.goal.pullupTarget) msgs.push(`Te faltan <em>${CONFIG.goal.pullupTarget - reps}</em> para tu objetivo de dominadas. Son repeticiones, no meses.`);
+    if (streak >= 2) msgs.push(`Llevás <em>${streak} entrenamientos seguidos</em> sin fallar. La constancia es el único suplemento que funciona siempre.`);
+    if (streak >= 5) msgs.push(`Racha de <em>${streak}</em>. Esto ya no es motivación: es identidad. Sos alguien que entrena.`);
+    if (coke >= 3) msgs.push(`<em>${coke} días sin Coca-Cola</em>. Esa constancia silenciosa vale tanto como cualquier serie.`);
+    if (coke >= 14) msgs.push(`Dos semanas o más sin Coca-Cola. Tu cintura lo va a notar antes que vos.`);
+    if (trend !== null && trend < 0) msgs.push(`Esta semana: <em>${trend} kg</em>. Vas en la dirección correcta. Mantené el plan, no lo cambies porque funciona.`);
+    if (trend !== null && trend >= 0 && kg > 0) msgs.push(`La balanza se movió poco esta semana. Normal: el progreso no es lineal. Se juzga por meses, no por días.`);
+    if (daysToDec > 0) msgs.push(`Quedan <em>${daysToDec} días</em> hasta diciembre. Es tiempo de sobra si cada semana cumplís las sesiones del plan.`);
+    if (cur > 0 && kg > 0) msgs.push(`Hoy pesás <em>${cur} kg</em>. El número importa menos que la tendencia, y la tendencia la escribís vos.`);
+
+    // Fondo general para días sin datos suficientes
+    msgs.push(`El plan es simple: entrenar, sumar de a poco, caminar, comer bien. Lo difícil es hacerlo un martes cualquiera. Hoy es ese martes.`);
+    msgs.push(`Nadie ve las series que hacés hoy. Todos van a ver la espalda que tenés en diciembre.`);
+    msgs.push(`La dominada no se consigue el día que sale: se consigue todos los días anteriores.`);
+    msgs.push(`Entrená como si ya fueras la persona que querés ser en diciembre. El cuerpo alcanza a la conducta.`);
+    return msgs;
+  },
+  today() {
+    const key = Dates.todayKey();
+    const pool = this.pool();
+    const seen = Store.s.coachSeen || {};
+    if (seen[key] !== undefined && pool[seen[key]]) return pool[seen[key]];
+    // Elegir evitando lo mostrado los últimos 7 días
+    const recent = Object.entries(seen)
+      .filter(([d]) => Dates.daysBetween(d, key) <= 7)
+      .map(([,i]) => i);
+    const candidates = pool.map((_,i) => i).filter(i => !recent.includes(i));
+    const list = candidates.length ? candidates : pool.map((_,i)=>i);
+    // Determinista por fecha para que no cambie al recargar
+    const seed = key.split("-").reduce((s,x)=>s + Number(x), 0);
+    const idx = list[seed % list.length];
+    seen[key] = idx;
+    Store.s.coachSeen = seen;
+    Store.commit();
+    return pool[idx];
+  },
+};
+
+/* ---- Coach IA con Gemini: la clave queda en tu dispositivo ---- */
+const AI = {
+  model: "gemini-2.5-flash",
+  hasKey() { return !!(Conn.get().geminiKey || "").trim(); },
+
+  summary() {
+    const p = Store.s.profile;
+    const ph = Plan.phase();
+    const ws = Workouts.sorted().slice(-4).map(w => `${w.date} → ${Workouts.describe(w)}`).join(" | ") || "sin sesiones";
+    const weights = [...Store.s.weights].sort((a,b)=>a.date<b.date?-1:1).slice(-6)
+      .map(w => `${w.date}:${w.kg}kg`).join(", ") || "sin registros";
+    const ms = [...Store.s.measurements].sort((a,b)=>a.date<b.date?-1:1);
+    const lm = ms.length ? ms[ms.length-1] : null;
+    const measures = lm ? `${lm.date}: ` + CONFIG.measures.filter(m => lm[m.id] != null).map(m => `${m.name} ${lm[m.id]} cm`).join(", ") : "sin medidas";
+    const today = Dates.todayKey();
+    const habitLine = CONFIG.habits.map(h => {
+      let n = 0;
+      for (let i = 0; i < 7; i++) if (Habits.get(Dates.addDays(today, -i))[h.id]) n++;
+      return `${h.name}: ${n}/7`;
+    }).join(", ");
+    return [
+      `Objetivo: espalda en V (hombros y espalda más anchos), pecho más desarrollado, cintura menor y dominadas estrictas (meta ${CONFIG.goal.pullupTarget} reps en una serie), para ${p.targetDateISO}. Peso ${p.startWeight} → ${p.targetWeight} kg.`,
+      `Fase del plan: ${Plan.started() ? `${ph.id} (${ph.name}) — ${Plan.progressText()}` : "la vuelta todavía no empezó (fase 1 al arrancar)"}. Regla de la fase: ${ph.rule}`,
+      `Peso (últimos registros): ${weights}. Actual: ${Progress.currentKg()} kg.`,
+      `Medidas (última): ${measures}.`,
+      `Dominadas: mejor serie estricta ${Pullup.bestReps()} reps; menor asistencia ${Pullup.bestAssist()} kg.`,
+      `Últimas sesiones: ${ws}.`,
+      `Hábitos últimos 7 días: ${habitLine}.`,
+      `Racha de entrenos: ${Workouts.trainingStreak()}. Días sin Coca-Cola: ${Habits.daysWithoutCoke()}.`,
+    ].join("\n");
+  },
+
+  async analyze(force = false) {
+    const key = Dates.todayKey();
+    Store.s.aiCache = Store.s.aiCache || {};
+    if (!force && Store.s.aiCache[key]) return Store.s.aiCache[key];
+    const prompt =
+`Sos un entrenador personal experto en hipertrofia y recomposición corporal. Este es el estado real de tu alumno, que vuelve al gimnasio por fases (ver "Fase del plan"), más caminata diaria:
+
+${this.summary()}
+
+Respondé en español, tono directo y adulto, máximo 220 palabras, en tres bloques con estos títulos en negrita:
+**Lectura** (qué dice el progreso, sin adular),
+**Ajuste para la próxima semana** (indicaciones concretas por ejercicio: series, repeticiones y kilos; respetá la regla de la fase),
+**Foco de hábito** (el único hábito que más le conviene atacar y por qué).
+Sin introducción ni cierre.`;
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${encodeURIComponent(Conn.get().geminiKey.trim())}`,
+      { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.7, maxOutputTokens: 700 } }) });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(j.error?.message || ("HTTP " + res.status));
+    const text = (j.candidates?.[0]?.content?.parts || []).map(pt => pt.text || "").join("").trim();
+    if (!text) throw new Error("respuesta vacía del modelo");
+    Store.s.aiCache = { [key]: text }; // se guarda solo el análisis del día
+    Store.commit();
+    return text;
+  },
+
+  // Render mínimo de markdown (negritas, viñetas, párrafos) con HTML escapado
+  md(t) {
+    let s = UI.esc(t);
+    s = s.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+    s = s.replace(/^\s*[-*]\s+(.+)$/gm, "• $1");
+    return s.split(/\n{2,}/).map(par => `<p>${par.replace(/\n/g, "<br>")}</p>`).join("");
+  },
+};
+
+/* ---- Insights: cruces entre hábitos y rendimiento real ---- */
+const Insights = {
+  _avg(arr) { return arr.reduce((s, x) => s + x, 0) / arr.length; },
+
+  list() {
+    const out = [];
+    const ws = Workouts.sorted();
+
+    // 1) Dormir bien (noche anterior) → colgado
+    {
+      const conSueno = [], sinSueno = [];
+      ws.forEach(w => {
+        const secs = Workouts.bestSet(w, "colgado");
+        if (!secs) return;
+        (Habits.get(Dates.addDays(w.date, -1))["sueno"] ? conSueno : sinSueno).push(secs);
+      });
+      if (conSueno.length >= 3 && sinSueno.length >= 3) {
+        const d = (this._avg(conSueno) - this._avg(sinSueno)) / this._avg(sinSueno) * 100;
+        if (Math.abs(d) >= 8) out.push({
+          color: "var(--violet)",
+          text: `Cuando dormís bien la noche anterior, tu colgado promedia <em>${d > 0 ? "+" : ""}${d.toFixed(0)}%</em> (${this._avg(conSueno).toFixed(0)}s vs ${this._avg(sinSueno).toFixed(0)}s). El sueño es parte del entrenamiento.`,
+        });
+      }
+    }
+
+    // 2) Creatina (mismo día) → volumen de repeticiones de la sesión
+    {
+      const con = [], sin = [];
+      ws.forEach(w => {
+        const vol = Ex.all().filter(e => e.type !== "secs")
+          .reduce((s, e) => s + Workouts.volume(w, e.id), 0);
+        if (!vol) return;
+        (Habits.get(w.date)["creatina"] ? con : sin).push(vol);
+      });
+      if (con.length >= 3 && sin.length >= 3) {
+        const d = (this._avg(con) - this._avg(sin)) / this._avg(sin) * 100;
+        if (Math.abs(d) >= 8) out.push({
+          color: "var(--mint)",
+          text: `Los días con creatina movés <em>${d > 0 ? "+" : ""}${d.toFixed(0)}%</em> de volumen total (${this._avg(con).toFixed(0)} vs ${this._avg(sin).toFixed(0)} reps por sesión).`,
+        });
+      }
+    }
+
+    // 3) Coca-Cola entre pesajes → ritmo de descenso
+    {
+      const wt = [...Store.s.weights].sort((a, b) => a.date < b.date ? -1 : 1);
+      const conCoca = [], sinCoca = [];
+      for (let i = 1; i < wt.length; i++) {
+        const days = Dates.daysBetween(wt[i-1].date, wt[i].date);
+        if (days < 1 || days > 21) continue;
+        const rate = (wt[i].kg - wt[i-1].kg) / days * 1000; // g/día
+        let coca = false;
+        for (let d = 1; d <= days; d++) if (Habits.get(Dates.addDays(wt[i-1].date, d))["coca"]) { coca = true; break; }
+        (coca ? conCoca : sinCoca).push(rate);
+      }
+      if (conCoca.length >= 3 && sinCoca.length >= 3) {
+        const a = this._avg(sinCoca), b = this._avg(conCoca);
+        if (a < b - 10) out.push({
+          color: "var(--coral)",
+          text: `En los tramos <em>sin Coca-Cola</em> tu peso se mueve a ${a.toFixed(0)} g/día; con Coca de por medio, ${b.toFixed(0)} g/día. Los datos son tuyos, la conclusión también.`,
+        });
+      }
+    }
+
+    return out;
+  },
+};
+
+/* ---- Sync opcional con Supabase (respaldo en la nube, multi-dispositivo) ---- */
+const Sync = {
+  configured() {
+    const c = Conn.get();
+    return !!(c.supabaseUrl || "").trim() && !!(c.supabaseKey || "").trim();
+  },
+  // Con sesión, el token del usuario va en Authorization → RLS aplica sola
+  async _headers() {
+    const k = Conn.get().supabaseKey.trim();
+    const t = await Auth.token();
+    return { apikey: k, Authorization: "Bearer " + t, "Content-Type": "application/json" };
+  },
+  _url() { return Conn.get().supabaseUrl.trim().replace(/\/+$/, "") + "/rest/v1/vform_state"; },
+
+  async push() {
+    if (!Auth.user) throw new Error("iniciá sesión para sincronizar");
+    const res = await fetch(this._url() + "?on_conflict=user_id", {
+      method: "POST",
+      headers: { ...(await this._headers()), Prefer: "resolution=merge-duplicates" },
+      body: JSON.stringify([{ user_id: Auth.user.id, data: Store.s, updated_at: new Date().toISOString() }]),
+    });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+  },
+
+  async pull() {
+    if (!Auth.user) throw new Error("iniciá sesión para sincronizar");
+    const res = await fetch(this._url() + `?user_id=eq.${Auth.user.id}&select=data,updated_at`, { headers: await this._headers() });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const rows = await res.json();
+    if (!rows.length) throw new Error("no hay respaldo en la nube todavía");
+    return rows[0];
+  },
+};
+
+/* ---- Session: flujos de entrar / salir de cuenta ---- */
+const Session = {
+  // Tras loguearse: cambiar al espacio del usuario, adoptar datos de invitado
+  // si es la primera vez, y reconciliar con la nube (gana el más nuevo)
+  async afterLogin() {
+    const guest = Storage.load(); // todavía estamos en el espacio invitado
+    Storage.setNamespace(Auth.user.id);
+    Store.reload();
+    const isEmpty = st => !st.workouts.length && !st.weights.length && !Object.keys(st.habits).length;
+    try {
+      const row = await Sync.pull();
+      const cloudNewer = (row.data?.updatedAt || "") > (Store.s.updatedAt || "");
+      if (isEmpty(Store.s) || cloudNewer) Store.replace(row.data);
+      else await Sync.push();
+    } catch (_) {
+      // No hay respaldo en la nube todavía: adoptar datos locales de invitado si los hay
+      if (isEmpty(Store.s) && guest && !isEmpty(guest)) Store.replace(JSON.parse(JSON.stringify(guest)));
+      Sync.push().catch(() => {});
+    }
+    Router.render();
+  },
+
+  signOut() {
+    Auth.signOut();
+    Storage.setNamespace(null);
+    Store.reload();
+    Router.render();
+    UI.toast("Sesión cerrada");
+  },
+};
+
+/* ==========================================================================
+   UI — helpers de render y componentes
+   ========================================================================== */
+const UI = {
+  esc(s) { return String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); },
+  el(html) { const t = document.createElement("template"); t.innerHTML = html.trim(); return t.content.firstElementChild; },
+  toast(msg) {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(t._h);
+    t._h = setTimeout(() => t.classList.remove("show"), 2200);
+  },
+  checkSVG: `<svg viewBox="0 0 24 24"><path d="M4 12.5 10 18.5 20 6.5"/></svg>`,
+
+  /* Anillo de progreso (componente) */
+  ring({ pct, size = 88, stroke = 8, color = "var(--mint)", value, sub }) {
+    const r = (size - stroke) / 2;
+    const c = 2 * Math.PI * r;
+    const off = c * (1 - Math.min(1, Math.max(0, pct / 100)));
+    return `
+      <div class="ring-wrap" style="width:${size}px;height:${size}px">
+        <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true">
+          <circle class="ring-track" cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke-width="${stroke}"/>
+          <circle class="ring-fill" cx="${size/2}" cy="${size/2}" r="${r}" fill="none"
+            stroke="${color}" stroke-width="${stroke}" stroke-linecap="round"
+            stroke-dasharray="${c}" stroke-dashoffset="${off}"
+            transform="rotate(-90 ${size/2} ${size/2})"/>
+        </svg>
+        <div class="center"><span class="v">${value}</span>${sub ? `<span class="s">${sub}</span>` : ""}</div>
+      </div>`;
+  },
+
+  /* Gráfico de línea SVG con área, sin dependencias */
+  lineChart(points, { height = 150, color = "var(--mint)", unit = "", goal = null, fmt = v => v } = {}) {
+    if (!points.length) return `<div class="empty">Todavía no hay datos para graficar</div>`;
+    const W = 340, H = height, padL = 34, padR = 10, padT = 12, padB = 22;
+    const xs = points.map((_, i) => i);
+    const ys = points.map(p => p.y);
+    let minY = Math.min(...ys, ...(goal !== null ? [goal] : []));
+    let maxY = Math.max(...ys, ...(goal !== null ? [goal] : []));
+    if (minY === maxY) { minY -= 1; maxY += 1; }
+    const span = maxY - minY;
+    minY -= span * 0.12; maxY += span * 0.12;
+    const X = i => padL + (xs.length === 1 ? (W-padL-padR)/2 : (i / (xs.length - 1)) * (W - padL - padR));
+    const Y = v => padT + (1 - (v - minY) / (maxY - minY)) * (H - padT - padB);
+    const path = points.map((p, i) => `${i ? "L" : "M"}${X(i).toFixed(1)},${Y(p.y).toFixed(1)}`).join(" ");
+    const area = `${path} L${X(points.length-1).toFixed(1)},${H-padB} L${X(0).toFixed(1)},${H-padB} Z`;
+    const last = points[points.length - 1];
+    const gid = "g" + Math.random().toString(36).slice(2, 8);
+    const gridVals = [minY + span*0.12, (minY+maxY)/2, maxY - span*0.12];
+    const labelIdx = points.length <= 5 ? points.map((_,i)=>i)
+      : [0, Math.floor((points.length-1)/2), points.length-1];
+    return `
+      <svg class="chart" viewBox="0 0 ${W} ${H}" role="img">
+        <defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="${color}" stop-opacity=".22"/>
+          <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
+        </linearGradient></defs>
+        ${gridVals.map(v => `
+          <line class="axis" x1="${padL}" y1="${Y(v).toFixed(1)}" x2="${W-padR}" y2="${Y(v).toFixed(1)}"/>
+          <text x="${padL-5}" y="${(Y(v)+3).toFixed(1)}" class="lbl-end">${fmt(v)}</text>`).join("")}
+        ${goal !== null ? `
+          <line x1="${padL}" y1="${Y(goal).toFixed(1)}" x2="${W-padR}" y2="${Y(goal).toFixed(1)}"
+            stroke="${color}" stroke-opacity=".5" stroke-width="1" stroke-dasharray="4 4"/>` : ""}
+        <path d="${area}" fill="url(#${gid})"/>
+        <path d="${path}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="${X(points.length-1).toFixed(1)}" cy="${Y(last.y).toFixed(1)}" r="4" fill="${color}"/>
+        ${labelIdx.map(i => `<text x="${X(i).toFixed(1)}" y="${H-6}" text-anchor="${i===0?"start":i===points.length-1?"end":"middle"}">${points[i].label}</text>`).join("")}
+      </svg>`;
+  },
+
+  /* Gráfico de barras SVG */
+  barChart(bars, { height = 130, color = "var(--mint)", max = null } = {}) {
+    if (!bars.length) return `<div class="empty">Sin datos</div>`;
+    const W = 340, H = height, padB = 20, padT = 8;
+    const M = max ?? Math.max(...bars.map(b => b.count), 1);
+    const bw = Math.min(28, (W / bars.length) * 0.55);
+    const step = W / bars.length;
+    return `
+      <svg class="chart" viewBox="0 0 ${W} ${H}" role="img">
+        ${bars.map((b, i) => {
+          const h = Math.max(3, (b.count / M) * (H - padB - padT));
+          const x = i * step + (step - bw) / 2;
+          const y = H - padB - h;
+          return `
+            <rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw}" height="${h.toFixed(1)}" rx="5"
+              fill="${b.count ? color : "rgba(255,255,255,.08)"}" opacity="${b.count ? .9 : 1}"/>
+            ${b.count ? `<text x="${(x+bw/2).toFixed(1)}" y="${(y-5).toFixed(1)}" text-anchor="middle">${b.count}</text>` : ""}
+            <text x="${(x+bw/2).toFixed(1)}" y="${H-5}" text-anchor="middle">${b.label}</text>`;
+        }).join("")}
+      </svg>`;
+  },
+
+  /* Camino a la dominada (elemento firma) */
+  pullupRail() {
+    const st = Pullup.stage();
+    const best = Pullup.bestHang();
+    const stages = CONFIG.pullupStages;
+    // Progreso continuo dentro del riel
+    let fillPct = 0;
+    for (let i = 0; i < stages.length; i++) {
+      const lo = stages[i].min;
+      const hi = stages[i+1] ? stages[i+1].min : stages[i].min;
+      if (best >= hi && stages[i+1]) continue;
+      const within = stages[i+1] ? Math.min(1, Math.max(0, (best - lo) / (hi - lo || 1))) : (best >= lo ? 1 : 0);
+      fillPct = ((i + within) / (stages.length - 1)) * 100;
+      break;
+    }
+    if (best >= stages[stages.length-1].min) fillPct = 100;
+    return `
+      <div class="rail" role="img" aria-label="Etapa actual: ${st.label}">
+        <div class="track"></div>
+        <div class="fill" style="width: calc((100% - 24px) * ${(fillPct/100).toFixed(3)})"></div>
+        <div class="stages">
+          ${stages.map((s, i) => `
+            <div class="stage ${i < st.idx ? "done" : ""} ${i === st.idx ? "now" : ""}">
+              <div class="dot">${i < st.idx ? "✓" : s.icon}</div>
+              <div class="t">${s.label}</div>
+            </div>`).join("")}
+        </div>
+      </div>`;
+  },
+
+  /* Modal tipo hoja */
+  openSheet(html, onMount) {
+    const root = document.getElementById("modalRoot");
+    const sheet = document.getElementById("sheet");
+    sheet.innerHTML = `<div class="grab"></div>` + html;
+    root.classList.add("open");
+    root.setAttribute("aria-hidden", "false");
+    if (onMount) onMount(sheet);
+  },
+  closeSheet() {
+    const root = document.getElementById("modalRoot");
+    root.classList.remove("open");
+    root.setAttribute("aria-hidden", "true");
+    document.getElementById("sheet").innerHTML = "";
+  },
+
+  stepper(id, value, { min = 0, max = 999, step = 1, label = "" } = {}) {
+    return `
+      <div class="stepper" data-stepper="${id}" data-min="${min}" data-max="${max}" data-step="${step}">
+        <button type="button" data-dec aria-label="Restar">−</button>
+        <input type="number" inputmode="decimal" step="${step}" value="${value}" aria-label="${label}">
+        <button type="button" data-inc aria-label="Sumar">+</button>
+      </div>`;
+  },
+  bindSteppers(rootEl) {
+    rootEl.querySelectorAll("[data-stepper]").forEach(st => {
+      const input = st.querySelector("input");
+      const step = +st.dataset.step || 1;
+      const clamp = v => +Math.max(+st.dataset.min, Math.min(+st.dataset.max, v)).toFixed(2);
+      st.querySelector("[data-dec]").onclick = () => { input.value = clamp((+input.value || 0) - step); input.dispatchEvent(new Event("change")); };
+      st.querySelector("[data-inc]").onclick = () => { input.value = clamp((+input.value || 0) + step); input.dispatchEvent(new Event("change")); };
+    });
+  },
+};
+
+document.getElementById("modalRoot").addEventListener("click", e => {
+  if (e.target.hasAttribute("data-close")) UI.closeSheet();
+});
+
+/* ==========================================================================
+   Screens — una función de render por pantalla
+   ========================================================================== */
+const Screens = {};
+
+/* ---------------------------- HOY (dashboard) ---------------------------- */
+Screens.hoy = function (root) {
+  const today = Dates.todayKey();
+  const p = Store.s.profile;
+  const cur = Progress.currentKg();
+  const streak = Workouts.trainingStreak();
+  const coke = Habits.daysWithoutCoke();
+  const isTraining = Dates.isTrainingDay(today);
+  const nextT = Dates.nextTrainingDay(isTraining && !Workouts.byDate(today) ? today : Dates.addDays(today, 1));
+  const doneToday = !!Workouts.byDate(today);
+  const sess = Plan.sessionFor(isTraining ? today : nextT);
+  const ph = Plan.phase();
+  const daily = Store.s.dailyDone[today] || {};
+  const hour = new Date().getHours();
+  const greet = hour < 13 ? "Buen día" : hour < 20 ? "Buenas tardes" : "Buenas noches";
+  const trend = Progress.weekTrend();
+
+  root.innerHTML = `
+  <div class="screen">
+    <div class="row">
+      <div>
+        <h1 class="greet">${greet}${Auth.user ? ", " + UI.esc(Auth.user.email.split("@")[0]) : ""} 👋</h1>
+        <p class="sub">${Dates.fmtLong(today)}</p>
+      </div>
+      <button class="btn ghost small" data-settings aria-label="Ajustes">⚙︎</button>
+    </div>
+
+    <div class="coach">${Coach.today()}</div>
+    <button class="btn ghost small mt8" data-ai>🧠 Análisis del coach con IA</button>
+
+    ${!Plan.started() ? `
+    <div class="card" style="border-color: var(--violet); background: var(--violet-dim)">
+      <div class="eyebrow" style="color:var(--violet)">Tu vuelta</div>
+      <p class="mt8" style="font-size:14.5px">El plan arranca el día que vos decidas. Las primeras 2 semanas van con <strong>65–70 % de tus cargas</strong>, sin llegar al fallo.</p>
+      <button class="btn mint mt14" data-startreturn>Empezar la vuelta hoy</button>
+    </div>` : `
+    <div class="card">
+      <div class="eyebrow">Fase ${ph.id} · ${ph.name}</div>
+      <p class="dimtext small mt8">${Plan.progressText()}. ${ph.rule}</p>
+    </div>`}
+
+    <h2>Tu objetivo</h2>
+    <div class="card">
+      <div class="rings">
+        <div class="ring-item">
+          ${UI.ring({ pct: Progress.weightPct(), color: "var(--mint)", value: cur.toFixed(1), sub: `→ ${p.targetWeight} kg` })}
+          <span class="lbl">Peso</span>
+        </div>
+        <div class="ring-item">
+          ${UI.ring({ pct: Pullup.pct(), color: "var(--violet)", value: `${Pullup.bestReps()}`, sub: `→ ${CONFIG.goal.pullupTarget} reps` })}
+          <span class="lbl">Dominadas</span>
+        </div>
+        <div class="ring-item">
+          ${UI.ring({ pct: Progress.goalPct(), color: "var(--coral)", value: `${Progress.goalPct()}%`, sub: "objetivo" })}
+          <span class="lbl">Diciembre</span>
+        </div>
+      </div>
+      <div class="row mt20" style="justify-content:center; gap:8px; flex-wrap:wrap">
+        <span class="pill ${trend !== null && trend < 0 ? "up" : "flat"}">${trend === null ? "⚖️ Registrá tu peso" : (trend <= 0 ? "▼" : "▲") + " " + Math.abs(trend).toFixed(1) + " kg esta semana"}</span>
+        <span class="pill up">🔥 ${streak} ${streak === 1 ? "entreno" : "entrenos"} seguidos</span>
+        <span class="pill ${coke > 0 ? "up" : "flat"}">🚫🥤 ${coke} ${coke === 1 ? "día" : "días"} sin Coca-Cola</span>
+      </div>
+    </div>
+
+    <h2>Dominadas</h2>
+    <div class="card" data-go="entreno:dominadas" style="cursor:pointer">
+      <div class="row">
+        <div class="metric"><span class="n">${Pullup.bestReps()}</span><span class="u">reps estrictas</span></div>
+        <div class="metric"><span class="n">${Pullup.bestAssist()}</span><span class="u">kg de asistencia</span></div>
+      </div>
+      <p class="dimtext mt14">Objetivo: ${CONFIG.goal.pullupTarget} en una sola serie, sin asistencia.</p>
+    </div>
+
+    <h2>${isTraining ? "Entrenamiento de hoy" : "Próximo entrenamiento"}</h2>
+    <div class="card">
+      <div class="row">
+        <div>
+          <div class="metric"><span class="n" style="font-size:22px">${isTraining ? "Hoy" : Dates.fmt(nextT, {weekday:"long"})}</span></div>
+          <p class="dimtext mt8">${sess ? `<strong>${sess.name}</strong> · ${sess.ex.map(id => Ex.get(id).name).join(" · ")}` : (Plan.isCardio(today) ? "Caminata de 5 km. Sin pesas." : "Descanso")}</p>
+        </div>
+        <span class="tag ${doneToday ? "mint" : "violet"}">${doneToday ? "✓ Hecho" : (isTraining ? "Pendiente" : Dates.fmt(nextT))}</span>
+      </div>
+      ${isTraining && !doneToday ? `<button class="btn mint mt14" data-go="entreno">Empezar sesión</button>` : ""}
+      ${doneToday ? `<button class="btn ghost mt14" data-go="entreno">Ver sesión de hoy</button>` : ""}
+    </div>
+
+    <h2>Todos los días</h2>
+    <div class="card">
+      ${CONFIG.daily.map(d => `
+        <div class="item" data-daily="${d.id}" role="button" tabindex="0">
+          <div class="ico">${d.icon}</div>
+          <div class="body"><div class="name">${d.name}</div><div class="meta">${d.meta}</div></div>
+          <div class="end"><div class="check ${daily[d.id] ? "on" : ""}">${UI.checkSVG}</div></div>
+        </div>`).join("")}
+    </div>
+
+    <button class="btn ghost" data-logweight>⚖️ Registrar peso de hoy</button>
+  </div>`;
+
+  root.querySelectorAll("[data-daily]").forEach(el => {
+    const act = () => {
+      const day = { ...(Store.s.dailyDone[today] || {}) };
+      day[el.dataset.daily] = !day[el.dataset.daily];
+      if (!day[el.dataset.daily]) delete day[el.dataset.daily];
+      Store.s.dailyDone[today] = day;
+      Store.commit();
+      Router.render();
+    };
+    el.onclick = act;
+    el.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); act(); } };
+  });
+  root.querySelectorAll("[data-go]").forEach(el => el.onclick = () => {
+    const [tab, sub] = el.dataset.go.split(":");
+    Router.go(tab, sub);
+  });
+  root.querySelector("[data-logweight]").onclick = () => Sheets.logWeight();
+  root.querySelector("[data-ai]").onclick = () => Sheets.aiCoach();
+  root.querySelector("[data-settings]").onclick = () => Sheets.settings();
+  const sr = root.querySelector("[data-startreturn]");
+  if (sr) sr.onclick = () => { Plan.setStart(Dates.todayKey()); Router.render(); UI.toast("Arrancó la vuelta 💪"); };
+};
+
+/* ------------------------------- ENTRENO --------------------------------- */
+Screens.entreno = function (root, sub) {
+  const view = sub || "sesion";
+  root.innerHTML = `
+  <div class="screen">
+    <h1 class="greet">Entrenamiento</h1>
+    <p class="sub">${Plan.weekLabel()}</p>
+    <div class="seg mt14" role="tablist">
+      <button role="tab" data-v="sesion" class="${view==="sesion"?"active":""}">Sesión</button>
+      <button role="tab" data-v="dominadas" class="${view==="dominadas"?"active":""}">Dominadas</button>
+      <button role="tab" data-v="historial" class="${view==="historial"?"active":""}">Historial</button>
+    </div>
+    <div id="subview"></div>
+  </div>`;
+  root.querySelectorAll("[data-v]").forEach(b => b.onclick = () => Router.go("entreno", b.dataset.v));
+  const sv = root.querySelector("#subview");
+  if (view === "dominadas") return Subviews.dominadas(sv);
+  if (view === "historial") return Subviews.historial(sv);
+  Subviews.sesion(sv);
+};
+
+const Subviews = {};
+
+Subviews.sesion = function (root) {
+  const today = Dates.todayKey();
+  const w = Workouts.byDate(today);
+  const isTraining = Dates.isTrainingDay(today);
+  const sess = Plan.sessionFor(isTraining ? today : Dates.nextTrainingDay(Dates.addDays(today, 1)));
+  const ph = Plan.phase(today);
+  const ids = sess ? [...sess.ex] : [];
+  Object.keys(w?.exercises || {}).forEach(id => { if (!ids.includes(id) && Ex.get(id)) ids.push(id); });
+  const comparisons = w ? Workouts.compare(w) : null;
+  const cardio = !isTraining && Plan.isCardio(today);
+  const hidden = !isTraining && !w;
+
+  root.innerHTML = `
+    ${!Plan.started() ? `
+      <div class="card" style="border-color: var(--violet); background: var(--violet-dim)">
+        <div class="eyebrow" style="color:var(--violet)">Tu vuelta</div>
+        <p class="mt8" style="font-size:14.5px">El plan arranca cuando vos digas. Al empezar, las primeras 2 semanas van con <strong>65–70 % de tus cargas</strong>, sin llegar al fallo.</p>
+        <button class="btn mint mt14" data-startreturn>Empezar la vuelta hoy</button>
+      </div>` : `
+      <div class="card">
+        <div class="eyebrow">Fase ${ph.id} · ${ph.name}</div>
+        <p class="dimtext small mt8">${Plan.progressText()}. ${ph.rule}</p>
+      </div>`}
+    ${hidden ? `
+      <div class="card center mt8">
+        <p style="font-size:32px">🌿</p>
+        <p class="mt8" style="font-weight:650">${cardio ? "Hoy toca caminar" : "Hoy toca recuperar"}</p>
+        <p class="dimtext mt8">${cardio ? "Caminata de 5 km a paso firme. Sin pesas." : "Caminata, movilidad y elongación. El músculo crece cuando descansás."} Igual podés registrar una sesión extra si querés.</p>
+        <button class="btn ghost mt14" data-force>Registrar sesión de todos modos</button>
+      </div>` : ""}
+    ${sess ? `<h2>${sess.name}${isTraining ? "" : " · próxima"}</h2>
+      <p class="dimtext small" style="margin:-4px 0 12px">${sess.sub || ""}</p>` : ""}
+    <div id="exlist" ${hidden ? 'style="display:none"' : ""}>
+      ${ids.map(id => {
+        const ex = Ex.get(id);
+        const sets = w?.exercises?.[id]?.sets || [];
+        const last = Workouts.lastSets(id, today);
+        const kg = ex.type === "kgreps" ? Plan.suggestKg(ex, today) : null;
+        const target = `${Plan.setsFor(ex, today)} × ${ex.reps || ""}${kg != null ? ` · ~${kg} ${ex.unit}` : ""}`;
+        const cmp = comparisons?.find(c => c.ex.id === id);
+        return `
+        <div class="card" data-ex="${id}" role="button" tabindex="0" style="cursor:pointer">
+          <div class="row">
+            <div style="display:flex; align-items:center; gap:13px; min-width:0">
+              <div class="ico" style="width:42px;height:42px;border-radius:13px;background:var(--elev);display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0">${ex.icon}</div>
+              <div style="min-width:0">
+                <div class="name" style="font-weight:650">${ex.name}</div>
+                <div class="meta dimtext small">${sets.length
+                  ? Ex.setText(ex, sets) + (ex.type === "kgreps" ? ` (${ex.unit})` : "")
+                  : `${target}${last.length ? ` · antes ${Ex.setText(ex, last)}` : ""}`}</div>
+              </div>
+            </div>
+            <div class="end">
+              ${cmp && cmp.before ? `<span class="pill ${cmp.delta > 0 ? "up" : cmp.delta < 0 ? "down" : "flat"}">${cmp.delta > 0 ? "▲" : cmp.delta < 0 ? "▼" : "＝"} ${Math.round(Math.abs(cmp.delta))}</span>`
+                : sets.length ? `<div class="check on">${UI.checkSVG}</div>` : `<span class="pill flat">＋</span>`}
+            </div>
+          </div>
+        </div>`;
+      }).join("")}
+      ${w && comparisons && comparisons.some(c => c.before) ? `
+        <div class="coach" style="border-color: var(--violet)">
+          ${(() => {
+            const ups = comparisons.filter(c => c.delta > 0).length;
+            const total = comparisons.filter(c => c.before).length;
+            if (ups === 0) return "Sesión hecha. No todas suman más y está bien: sostener también es progresar.";
+            if (ups === total) return `Mejoraste en <em>todos los ejercicios</em> respecto a la sesión anterior. Así se construye una espalda.`;
+            return `Mejoraste en <em>${ups} de ${total}</em> ejercicios respecto a la última sesión. Sólido.`;
+          })()}
+        </div>` : ""}
+    </div>`;
+
+  const sr = root.querySelector("[data-startreturn]");
+  if (sr) sr.onclick = () => { Plan.setStart(Dates.todayKey()); Router.render(); UI.toast("Arrancó la vuelta 💪"); };
+  const force = root.querySelector("[data-force]");
+  if (force) force.onclick = () => {
+    root.querySelector("#exlist").style.display = "";
+    force.closest(".card").style.display = "none";
+  };
+  root.querySelectorAll("[data-ex]").forEach(el => {
+    const open = () => Sheets.exercise(el.dataset.ex);
+    el.onclick = open;
+    el.onkeydown = e => { if (e.key === "Enter") open(); };
+  });
+};
+
+Subviews.dominadas = function (root) {
+  const best = Pullup.bestReps();
+  const target = CONFIG.goal.pullupTarget;
+  const hist = Pullup.repsHistory();
+  const ah = Pullup.assistHistory();
+  const bestA = Pullup.bestAssist();
+
+  root.innerHTML = `
+    <div class="card center">
+      <div style="display:flex; justify-content:center">
+        ${UI.ring({ pct: (best/target)*100, size: 150, stroke: 11, color: "var(--violet)", value: `${best}`, sub: `objetivo ${target} reps` })}
+      </div>
+      <p class="dimtext mt14">Mejor serie de dominadas estrictas (sin asistencia)</p>
+    </div>
+
+    <h2>Dominadas asistidas</h2>
+    <div class="card">
+      <div class="metric xl"><span class="n">${bestA}</span><span class="u">kg de asistencia (menos es mejor)</span></div>
+      ${ah.length >= 2 ? `<div class="mt20">${UI.lineChart(ah.slice(-14).map(h => ({ y: h.kg, label: Dates.fmt(h.date) })), { color: "var(--violet)", fmt: v => Math.round(v) + "kg" })}</div>` : `<p class="dimtext small mt14">Con dos sesiones registradas aparece la evolución.</p>`}
+      <p class="dimtext mt14">Cuando completes 3 series de 5 con una asistencia, bajala un escalón.</p>
+    </div>
+
+    <h2>Dominadas estrictas</h2>
+    <div class="card">
+      ${hist.length >= 2 ? UI.lineChart(hist.slice(-14).map(h => ({ y: h.reps, label: Dates.fmt(h.date) })), { color: "var(--violet)", goal: target, fmt: v => Math.round(v) + "" })
+        : `<p class="dimtext small">Tu punto de partida es de ${CONFIG.baseline.pullupReps} reps por serie. Registrá tus intentos de cada sesión y acá aparece la evolución.</p>`}
+    </div>
+
+    <h2>Cómo progresar</h2>
+    <div class="card">
+      <p class="dimtext">Hacé 2–3 intentos al inicio de la sesión, fresco, y parás una repetición antes del fallo. Cada vez que sumes una repetición en todas las series, sumá otra en la próxima.</p>
+    </div>`;
+};
+
+Subviews.historial = function (root) {
+  const list = Workouts.sorted().slice().reverse();
+  root.innerHTML = !list.length
+    ? `<div class="empty">Tu primera sesión va a aparecer acá.<br>Cada serie que anotes es la referencia de la próxima.</div>`
+    : list.map(w => `
+        <div class="card">
+          <div class="row">
+            <div>
+              <div style="font-weight:650">${Dates.fmt(w.date, { weekday: "long", day: "numeric", month: "short" })}</div>
+              <div class="dimtext small mt8">${Workouts.totalSets(w)} series</div>
+            </div>
+            <button class="btn ghost small" data-del="${w.id}" aria-label="Eliminar sesión">✕</button>
+          </div>
+          <div class="mt8" style="display:flex; gap:6px; flex-wrap:wrap">
+            ${Ex.all().map(ex => {
+              const sets = w.exercises?.[ex.id]?.sets;
+              return sets?.length ? `<span class="pill">${ex.name}: ${Ex.setText(ex, sets)}</span>` : "";
+            }).join("")}
+          </div>
+        </div>`).join("");
+  root.querySelectorAll("[data-del]").forEach(b => b.onclick = () => {
+    if (!confirm("¿Eliminar esta sesión?")) return;
+    Store.s.workouts = Store.s.workouts.filter(w => w.id !== b.dataset.del);
+    Store.commit(); Router.render();
+  });
+};
+
+/* ------------------------------- COMIDAS --------------------------------- */
+Screens.comidas = function (root) {
+  const today = Dates.todayKey();
+  const day = Store.s.meals[today] || {};
+  const sections = [
+    { id: "desayuno", name: "Desayuno", icon: "☀️" },
+    { id: "comida",   name: "Comida",   icon: "🍽️" },
+    { id: "cena",     name: "Cena",     icon: "🌙" },
+  ];
+  const totalDone = sections.reduce((s, sec) => s + (day[sec.id]?.length || 0), 0);
+
+  root.innerHTML = `
+  <div class="screen">
+    <div class="row">
+      <div>
+        <h1 class="greet">Comidas</h1>
+        <p class="sub">Sin contar calorías. Comé de tu biblioteca.</p>
+      </div>
+      ${totalDone ? `<span class="tag amber">${totalDone} hoy</span>` : ""}
+    </div>
+    ${sections.map(sec => `
+      <h2>${sec.icon} ${sec.name}</h2>
+      <div class="card">
+        ${CONFIG.meals[sec.id].map(m => {
+          const on = (day[sec.id] || []).includes(m.id);
+          return `
+          <div class="item" data-meal="${sec.id}:${m.id}" role="button" tabindex="0">
+            <div class="ico">${m.icon}</div>
+            <div class="body"><div class="name">${m.name}</div></div>
+            <div class="end"><div class="check ${on ? "on amber" : ""}">${UI.checkSVG}</div></div>
+          </div>`;
+        }).join("")}
+      </div>`).join("")}
+  </div>`;
+
+  root.querySelectorAll("[data-meal]").forEach(el => {
+    const act = () => {
+      const [sec, id] = el.dataset.meal.split(":");
+      const d = { ...(Store.s.meals[today] || {}) };
+      const arr = new Set(d[sec] || []);
+      arr.has(id) ? arr.delete(id) : arr.add(id);
+      d[sec] = [...arr];
+      Store.s.meals[today] = d;
+      Store.commit(); Router.render();
+    };
+    el.onclick = act;
+    el.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); act(); } };
+  });
+};
+
+/* ------------------------------- HÁBITOS --------------------------------- */
+Screens.habitos = function (root) {
+  const today = Dates.todayKey();
+  const day = Habits.get(today);
+
+  root.innerHTML = `
+  <div class="screen">
+    <h1 class="greet">Hábitos</h1>
+    <p class="sub">${Dates.fmtLong(today)}</p>
+    <h2>Sumá todos los días</h2>
+    <div class="card">
+      ${CONFIG.habits.filter(h => h.kind === "good").map(h => Screens.habitos._habitRow(h, day)).join("")}
+    </div>
+    <h2>Bajo control</h2>
+    <div class="card">
+      ${CONFIG.habits.filter(h => h.kind === "avoid").map(h => Screens.habitos._habitRow(h, day)).join("")}
+    </div>
+    <p class="dimtext small center mt8">Los de arriba suman racha al marcarlos.<br>Coca-Cola y vino suman racha cada día que NO los marcás.</p>
+  </div>`;
+
+  root.querySelectorAll("[data-habit]").forEach(el => {
+    const act = () => { Habits.toggle(today, el.dataset.habit); Router.render(); };
+    el.onclick = act;
+    el.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); act(); } };
+  });
+};
+Screens.habitos._habitRow = function (h, day) {
+  const on = !!day[h.id];
+  const streak = Habits.streak(h.id);
+  return `
+    <div class="item" data-habit="${h.id}" role="button" tabindex="0">
+      <div class="ico">${h.icon}</div>
+      <div class="body">
+        <div class="name">${h.name}</div>
+        <div class="meta">${h.meta}${streak > 0 ? ` · <span style="color:${h.kind==="avoid" ? "var(--coral)" : "var(--mint)"}">🔥 ${streak} ${streak===1?"día":"días"}${h.kind==="avoid" ? " sin" : ""}</span>` : ""}</div>
+      </div>
+      <div class="end"><div class="check ${on ? (h.kind === "avoid" ? "on bad" : "on") : ""}">${UI.checkSVG}</div></div>
+    </div>`;
+};
+
+/* ------------------------------ PROGRESO --------------------------------- */
+Screens.progreso = function (root, sub) {
+  const view = sub || "peso";
+  root.innerHTML = `
+  <div class="screen">
+    <h1 class="greet">Progreso</h1>
+    <p class="sub">Lo que se mide, mejora.</p>
+    <div class="seg mt14" role="tablist">
+      <button data-v="peso" class="${view==="peso"?"active":""}">Peso</button>
+      <button data-v="medidas" class="${view==="medidas"?"active":""}">Medidas</button>
+      <button data-v="fotos" class="${view==="fotos"?"active":""}">Fotos</button>
+      <button data-v="stats" class="${view==="stats"?"active":""}">Stats</button>
+    </div>
+    <div id="subview"></div>
+  </div>`;
+  root.querySelectorAll("[data-v]").forEach(b => b.onclick = () => Router.go("progreso", b.dataset.v));
+  const sv = root.querySelector("#subview");
+  ({ peso: Subviews.peso, medidas: Subviews.medidas, fotos: Subviews.fotos, stats: Subviews.stats })[view](sv);
+};
+
+Subviews.peso = function (root) {
+  const w = [...Store.s.weights].sort((a,b) => a.date < b.date ? -1 : 1);
+  const p = Store.s.profile;
+  const cur = Progress.currentKg();
+  root.innerHTML = `
+    <div class="card">
+      <div class="row">
+        <div class="metric xl"><span class="n">${cur.toFixed(1)}</span><span class="u">kg ahora</span></div>
+        <div style="text-align:right">
+          <div class="metric"><span class="n" style="font-size:22px; color:var(--mint)">${p.targetWeight}</span><span class="u">kg meta</span></div>
+          <div class="dimtext small mt8">−${Progress.lostKg().toFixed(1)} kg acumulados</div>
+        </div>
+      </div>
+      <div class="mt20">
+        ${UI.lineChart(
+          w.slice(-20).map(x => ({ y: x.kg, label: Dates.fmt(x.date) })),
+          { color: "var(--mint)", goal: p.targetWeight, fmt: v => v.toFixed(0) }
+        )}
+      </div>
+      <button class="btn mint mt14" data-add>⚖️ Registrar peso</button>
+    </div>
+    ${w.length ? `
+    <h2>Registros</h2>
+    <div class="card">
+      ${w.slice(-8).reverse().map(x => `
+        <div class="item">
+          <div class="body"><div class="name" style="font-variant-numeric:tabular-nums">${x.kg.toFixed(1)} kg</div>
+          <div class="meta">${Dates.fmt(x.date, {weekday:"short", day:"numeric", month:"short"})}</div></div>
+          <button class="btn ghost small end" data-delw="${x.date}" aria-label="Eliminar registro">✕</button>
+        </div>`).join("")}
+    </div>` : ""}`;
+  root.querySelector("[data-add]").onclick = () => Sheets.logWeight();
+  root.querySelectorAll("[data-delw]").forEach(b => b.onclick = () => {
+    Store.s.weights = Store.s.weights.filter(x => x.date !== b.dataset.delw);
+    Store.commit(); Router.render();
+  });
+};
+
+Subviews.medidas = function (root, selected) {
+  const ms = [...Store.s.measurements].sort((a,b) => a.date < b.date ? -1 : 1);
+  const sel = selected || root._sel || "cintura";
+  root._sel = sel;
+  const series = ms.filter(m => m[sel] != null).map(m => ({ y: m[sel], label: Dates.fmt(m.date) }));
+  const last = ms.length ? ms[ms.length - 1] : null;
+
+  root.innerHTML = `
+    <div class="card">
+      <div class="seg" style="margin-bottom:14px">
+        ${CONFIG.measures.map(m => `<button data-m="${m.id}" class="${sel===m.id?"active":""}" style="font-size:11.5px; padding:8px 2px">${m.name}</button>`).join("")}
+      </div>
+      ${UI.lineChart(series.slice(-15), { color: "var(--coral)", fmt: v => v.toFixed(0) })}
+      <button class="btn ghost mt14" data-add>📏 Registrar medidas</button>
+    </div>
+    ${last ? `
+    <h2>Última medición · ${Dates.fmt(last.date)}</h2>
+    <div class="grid3">
+      ${CONFIG.measures.map(m => last[m.id] != null ? `
+        <div class="stat" style="padding:13px">
+          <div class="lbl">${m.name}</div>
+          <div class="metric"><span class="n" style="font-size:21px">${last[m.id]}</span><span class="u">cm</span></div>
+        </div>` : "").join("")}
+    </div>` : ""}`;
+  root.querySelectorAll("[data-m]").forEach(b => b.onclick = () => Subviews.medidas(root, b.dataset.m));
+  root.querySelector("[data-add]").onclick = () => Sheets.logMeasures();
+};
+
+Subviews.fotos = function (root) {
+  const photos = [...Store.s.photos].sort((a,b) => a.date < b.date ? 1 : -1);
+  root.innerHTML = `
+    <div class="card center">
+      <p class="dimtext">Sacate una foto por semana, misma luz y misma pose.<br>La evolución que la balanza no muestra, la muestra el espejo.</p>
+      <label class="btn ghost mt14" style="display:flex">
+        📸 Agregar foto
+        <input type="file" accept="image/*" capture="environment" hidden data-photo>
+      </label>
+    </div>
+    ${photos.length >= 2 ? `
+    <h2>Antes / después</h2>
+    <div class="card">
+      <div class="compare" style="--cut:50%">
+        <img src="${photos[photos.length-1].dataUrl}" alt="Foto inicial" class="top">
+        <img src="${photos[0].dataUrl}" alt="Foto más reciente">
+        <div class="bar"></div>
+        <span class="cap capA">ANTES · ${Dates.fmt(photos[photos.length-1].date)}</span>
+        <span class="cap capB">AHORA · ${Dates.fmt(photos[0].date)}</span>
+      </div>
+      <input type="range" class="scrub" min="0" max="100" value="50" data-scrub aria-label="Comparar fotos">
+    </div>` : ""}
+    ${photos.length ? `
+    <div class="photo-grid mt14">
+      ${photos.map((ph, i) => `
+        <figure data-ph="${i}">
+          <img src="${ph.dataUrl}" alt="Foto de progreso ${Dates.fmt(ph.date)}" loading="lazy">
+          <figcaption>${Dates.fmt(ph.date)}</figcaption>
+        </figure>`).join("")}
+    </div>
+    <p class="dimtext small center mt14">Tocá una foto para eliminarla</p>` : ""}`;
+
+  const scrub = root.querySelector("[data-scrub]");
+  if (scrub) {
+    const box = root.querySelector(".compare");
+    scrub.oninput = () => box.style.setProperty("--cut", scrub.value + "%");
+  }
+  root.querySelector("[data-photo]").onchange = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const img = new Image();
+    img.onload = () => {
+      const MAX = 900;
+      const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+      const cv = document.createElement("canvas");
+      cv.width = Math.round(img.width * scale);
+      cv.height = Math.round(img.height * scale);
+      cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+      Store.s.photos.push({ date: Dates.todayKey(), dataUrl: cv.toDataURL("image/jpeg", 0.72) });
+      Store.commit(); Router.render();
+      UI.toast("Foto guardada 📸");
+    };
+    img.src = URL.createObjectURL(file);
+  };
+  root.querySelectorAll("[data-ph]").forEach(f => f.onclick = () => {
+    if (!confirm("¿Eliminar esta foto?")) return;
+    const sorted = [...Store.s.photos].sort((a,b) => a.date < b.date ? 1 : -1);
+    const target = sorted[+f.dataset.ph];
+    Store.s.photos = Store.s.photos.filter(p => p !== target);
+    Store.commit(); Router.render();
+  });
+};
+
+Subviews.stats = function (root) {
+  const pred = Pullup.prediction();
+  const stats = [
+    { lbl: "Entrenamientos", v: Workouts.daysTrained(), u: "" },
+    { lbl: "Series totales", v: Stats.totalSets(), u: "" },
+    { lbl: "Repeticiones", v: Stats.totalReps(), u: "" },
+    { lbl: "Tiempo colgado", v: Math.round(Stats.totalHangSecs() / 60 * 10) / 10, u: "min" },
+    { lbl: "Peso perdido", v: Progress.lostKg().toFixed(1), u: "kg" },
+    { lbl: "Racha actual", v: Workouts.trainingStreak(), u: "🔥" },
+    { lbl: "Días entrenados", v: Workouts.daysTrained(), u: "" },
+    { lbl: "Dominada estimada", v: pred.ready && !pred.stalled ? Dates.fmt(pred.dateKey) : "—", u: "" },
+  ];
+  root.innerHTML = `
+    <div class="statgrid">
+      ${stats.map(s => `
+        <div class="stat">
+          <div class="lbl">${s.lbl}</div>
+          <div class="metric"><span class="n" style="font-size:27px">${s.v}</span><span class="u">${s.u}</span></div>
+        </div>`).join("")}
+    </div>
+    <h2>Sesiones por semana</h2>
+    <div class="card">
+      ${UI.barChart(Stats.weeklyWorkoutCounts(8), { color: "var(--mint)", max: 4 })}
+      <p class="dimtext small center mt8">Objetivo: 3 por semana</p>
+    </div>
+    <h2>Insights</h2>
+    ${(() => {
+      const ins = Insights.list();
+      return ins.length
+        ? `<div class="card">${ins.map(i => `<div class="coach" style="margin:0 0 16px; border-color:${i.color}">${i.text}</div>`).join("")}</div>`
+        : `<div class="card"><p class="dimtext">Acá se cruzan tus hábitos con tu rendimiento: sueño vs colgado, creatina vs volumen, Coca-Cola vs peso. Aparecen solos con unas 2 semanas de registro constante.</p></div>`;
+    })()}`;
+};
+
+/* ==========================================================================
+   Sheets — modales de captura de datos
+   ========================================================================== */
+const Sheets = {
+  logWeight() {
+    const cur = Progress.currentKg();
+    UI.openSheet(`
+      <h3>Registrar peso</h3>
+      <div class="field">
+        <label>Peso de hoy (kg)</label>
+        <input type="number" inputmode="decimal" step="0.1" id="wkg" value="${cur.toFixed(1)}">
+      </div>
+      <button class="btn mint" id="wsave">Guardar</button>`,
+      sheet => {
+        const input = sheet.querySelector("#wkg");
+        input.focus(); input.select();
+        sheet.querySelector("#wsave").onclick = () => {
+          const kg = parseFloat(input.value);
+          if (!kg || kg < 30 || kg > 250) return UI.toast("Ingresá un peso válido");
+          const today = Dates.todayKey();
+          Store.s.weights = Store.s.weights.filter(w => w.date !== today);
+          Store.s.weights.push({ date: today, kg: +kg.toFixed(1) });
+          Store.commit(); UI.closeSheet(); Router.render();
+          UI.toast(kg <= Store.s.profile.targetWeight ? "🎯 ¡Objetivo alcanzado!" : "Peso registrado ⚖️");
+        };
+      });
+  },
+
+  logMeasures() {
+    const last = [...Store.s.measurements].sort((a,b)=>a.date<b.date?-1:1).pop() || {};
+    UI.openSheet(`
+      <h3>Medidas de hoy (cm)</h3>
+      ${CONFIG.measures.map(m => `
+        <div class="field">
+          <label>${m.name}</label>
+          <input type="number" inputmode="decimal" step="0.5" data-mid="${m.id}" value="${last[m.id] ?? ""}" placeholder="—">
+        </div>`).join("")}
+      <button class="btn mint" id="msave">Guardar</button>`,
+      sheet => {
+        sheet.querySelector("#msave").onclick = () => {
+          const entry = { date: Dates.todayKey() };
+          let any = false;
+          sheet.querySelectorAll("[data-mid]").forEach(i => {
+            const v = parseFloat(i.value);
+            if (v > 0) { entry[i.dataset.mid] = v; any = true; }
+          });
+          if (!any) return UI.toast("Cargá al menos una medida");
+          Store.s.measurements = Store.s.measurements.filter(m => m.date !== entry.date);
+          Store.s.measurements.push(entry);
+          Store.commit(); UI.closeSheet(); Router.render();
+          UI.toast("Medidas guardadas 📏");
+        };
+      });
+  },
+
+  /* Editor de series de un ejercicio de la sesión de hoy */
+  exercise(exId) {
+    const ex = Ex.get(exId);
+    const today = Dates.todayKey();
+    let w = Workouts.byDate(today);
+    const kgMode = ex.type === "kgreps";
+    const saved = w?.exercises?.[exId]?.sets || [];
+    const last = Workouts.lastSets(exId, today);
+    const obs = w?.exercises?.[exId]?.obs || "";
+    const sugKg = kgMode ? Plan.suggestKg(ex, today) : null;
+    const nTarget = Plan.setsFor(ex, today);
+    // Carga inicial: la de la fase (sugerida); en la fase 3, la de la última vez
+    const defKg = kgMode
+      ? ((Plan.phaseId(today) === 3 && last.length) ? (last[last.length - 1].kg ?? 0) : (sugKg ?? (last.length ? last[last.length - 1].kg : 0) ?? 0))
+      : 0;
+    const defV = last.length ? last[last.length - 1].v : (parseInt(ex.reps, 10) || (ex.type === "secs" ? 30 : 8));
+    const sets = saved.length
+      ? saved.map(s => ({ ...s }))
+      : Array.from({ length: nTarget }, () => ({ kg: defKg, v: defV }));
+    const unit = ex.type === "secs" ? "segundos" : "repeticiones";
+
+    let tick = null, runIdx = -1, t0 = 0;
+    const pull = () => {
+      const sh = document.getElementById("sheet");
+      sets.forEach((s, i) => {
+        const v = sh.querySelector(`[data-stepper="v${i}"] input`);
+        if (v) s.v = Math.max(0, +v.value || 0);
+        const k = sh.querySelector(`[data-stepper="kg${i}"] input`);
+        if (k) s.kg = Math.max(0, +k.value || 0);
+      });
+    };
+    const render = () => {
+      if (tick) { clearInterval(tick); tick = null; runIdx = -1; }
+      const sheet = document.getElementById("sheet");
+      sheet.innerHTML = `
+        <div class="grab"></div>
+        <h3>${ex.icon} ${ex.name}</h3>
+        <p class="dimtext small" style="margin-top:-10px; margin-bottom:14px">${ex.cue}</p>
+        <div class="coach" style="margin:0 0 16px">
+          Objetivo: <em>${nTarget} × ${ex.reps || ""}</em>${sugKg != null ? ` · ~<em>${sugKg} ${ex.unit}</em>` : ""}
+          ${last.length ? `<br>Última vez: <strong>${Ex.setText(ex, last)}</strong>${kgMode ? ` (${ex.unit} × reps)` : ""}` : ""}
+        </div>
+        <div class="eyebrow" style="margin-bottom:10px">Series${kgMode ? ` (${ex.unit} · repeticiones)` : ` (${unit})`}</div>
+        <div id="setsbox">
+          ${sets.map((s, i) => kgMode ? `
+            <div style="display:grid; grid-template-columns:26px 1fr 1fr; gap:8px; align-items:center; margin-bottom:8px">
+              <span class="idx">${i + 1}</span>
+              ${UI.stepper("kg" + i, s.kg ?? 0, { min: 0, max: 500, step: ex.step || 1, label: `Carga serie ${i+1}` })}
+              ${UI.stepper("v" + i, s.v, { min: 0, max: 999, label: `Repeticiones serie ${i+1}` })}
+            </div>` : `
+            <div class="setrow ${ex.type === "secs" ? "chrono" : "timed"}">
+              <span class="idx">${i + 1}</span>
+              ${UI.stepper("v" + i, s.v, { min: 0, max: 999, label: `Serie ${i+1}` })}
+              ${ex.type === "secs" ? `<button type="button" class="tbtn" data-timer="${i}" aria-label="Cronometrar serie ${i+1}">⏱</button>` : ""}
+            </div>`).join("")}
+        </div>
+        <div class="row" style="gap:10px; margin: 6px 0 16px">
+          <button class="btn ghost small" id="addset">＋ Serie</button>
+          ${sets.length > 1 ? `<button class="btn ghost small" id="rmset">− Serie</button>` : ""}
+        </div>
+        <div class="field">
+          <label>Observaciones</label>
+          <textarea id="obs" placeholder="Cómo se sintió, técnica…">${UI.esc(obs)}</textarea>
+        </div>
+        <button class="btn mint" id="exsave">Guardar ejercicio</button>
+        ${w?.exercises?.[exId] ? `<button class="btn danger mt8" id="exclear">Quitar de la sesión</button>` : ""}`;
+
+      UI.bindSteppers(sheet);
+      // Cronómetro (solo ejercicios por tiempo): ⏱ arranca; ■ frena y guarda los segundos
+      sheet.querySelectorAll("[data-timer]").forEach(btn => {
+        btn.onclick = () => {
+          const i = +btn.dataset.timer;
+          const inp = sheet.querySelector(`[data-stepper="v${i}"] input`);
+          if (runIdx === i) {
+            clearInterval(tick); tick = null; runIdx = -1;
+            btn.classList.remove("run"); btn.textContent = "⏱";
+            sets[i].v = Math.max(0, +inp.value || 0);
+            return;
+          }
+          if (tick) {
+            clearInterval(tick);
+            const prevBtn = sheet.querySelector(".tbtn.run");
+            if (prevBtn) { prevBtn.classList.remove("run"); prevBtn.textContent = "⏱"; }
+          }
+          runIdx = i; t0 = Date.now();
+          btn.classList.add("run"); btn.textContent = "■";
+          inp.value = 0;
+          tick = setInterval(() => {
+            if (!document.body.contains(inp)) { clearInterval(tick); tick = null; return; }
+            inp.value = Math.round((Date.now() - t0) / 1000);
+          }, 250);
+        };
+      });
+      sheet.querySelector("#addset").onclick = () => { pull(); const l = sets[sets.length - 1]; sets.push({ kg: l?.kg ?? 0, v: l?.v || 0 }); render(); };
+      const rm = sheet.querySelector("#rmset");
+      if (rm) rm.onclick = () => { pull(); sets.pop(); render(); };
+      sheet.querySelector("#exsave").onclick = () => {
+        if (tick) { clearInterval(tick); tick = null; }
+        pull();
+        const clean = sets.filter(s => s.v > 0).map(s => kgMode ? { kg: +s.kg || 0, v: s.v } : { v: s.v });
+        if (!clean.length) return UI.toast(`Cargá al menos una serie con ${unit}`);
+        const prevW = Workouts.sorted().filter(x => x.date < today && x.exercises?.[exId]?.sets?.length).pop();
+        const before = prevW ? Workouts.metric(prevW, ex) : 0;
+        if (!w) {
+          w = { id: "w" + Date.now(), date: today, exercises: {} };
+          Store.s.workouts.push(w);
+        }
+        w.exercises[exId] = { sets: clean, obs: document.getElementById("obs").value.trim() };
+        const now = Workouts.metric(w, ex);
+        Store.commit(); UI.closeSheet(); Router.render();
+        if (before && now > before) UI.toast(`▲ +${Math.round(now - before)} vs. la sesión anterior 💪`);
+        else UI.toast("Ejercicio guardado ✓");
+        if (exId === "dominada") {
+          const bestNow = Math.max(...clean.map(s => s.v));
+          const bestPrev = Math.max(CONFIG.baseline.pullupReps, ...Pullup.repsHistory().filter(h => h.date !== today).map(h => h.reps));
+          if (bestNow > bestPrev) setTimeout(() => UI.toast(`🏆 Nuevo récord de dominadas: ${bestNow}`), 2400);
+        }
+      };
+      const clear = sheet.querySelector("#exclear");
+      if (clear) clear.onclick = () => {
+        delete w.exercises[exId];
+        if (!Object.keys(w.exercises).length) Store.s.workouts = Store.s.workouts.filter(x => x.id !== w.id);
+        Store.commit(); UI.closeSheet(); Router.render();
+      };
+    };
+
+    UI.openSheet("", () => render());
+  },
+
+  /* Coach IA: analiza tu progreso real y ajusta la rutina de la semana */
+  aiCoach(force = false) {
+    if (!AI.hasKey()) {
+      UI.openSheet(`
+        <h3>🧠 Coach IA</h3>
+        <p class="dimtext small" style="margin-bottom:14px">
+          Lee tu progreso real (colgado, peso, sesiones, hábitos) y te devuelve una lectura honesta más el ajuste
+          concreto de la próxima semana. Usa tu API key gratuita de Google AI Studio
+          (<strong>aistudio.google.com</strong> → Get API key). La clave se guarda solo en este dispositivo.
+        </p>
+        <div class="field"><label>API key de Gemini</label><input type="password" id="gk1" placeholder="AIza…"></div>
+        <button class="btn mint" id="gks">Guardar y analizar</button>`,
+        sheet => {
+          sheet.querySelector("#gks").onclick = () => {
+            const v = sheet.querySelector("#gk1").value.trim();
+            if (!v) return UI.toast("Pegá tu API key");
+            Conn.set({ geminiKey: v });
+            Sheets.aiCoach();
+          };
+        });
+      return;
+    }
+    UI.openSheet(`
+      <h3>🧠 Coach IA</h3>
+      <div id="aiout" class="ai-out"><p class="dimtext">Analizando tu progreso…</p></div>
+      <button class="btn ghost mt14" id="aire">↻ Actualizar análisis</button>`,
+      async sheet => {
+        sheet.querySelector("#aire").onclick = () => Sheets.aiCoach(true);
+        try {
+          const text = await AI.analyze(force);
+          const out = sheet.querySelector("#aiout");
+          if (out) out.innerHTML = AI.md(text);
+        } catch (e) {
+          const out = sheet.querySelector("#aiout");
+          if (out) out.innerHTML = `<p class="dimtext">No pude obtener el análisis: ${UI.esc(e.message)}.<br>Revisá la API key en Ajustes ⚙︎ o probá de nuevo en un rato.</p>`;
+        }
+      });
+  },
+
+  settings() {
+    const p = Store.s.profile;
+    const c = Conn.get();
+    UI.openSheet(`
+      <h3>Ajustes</h3>
+      <div class="grid2">
+        <div class="field"><label>Peso inicial (kg)</label><input type="number" step="0.1" id="sw" value="${p.startWeight}"></div>
+        <div class="field"><label>Peso objetivo (kg)</label><input type="number" step="0.1" id="tw" value="${p.targetWeight}"></div>
+      </div>
+      <div class="field"><label>Fecha objetivo</label><input type="date" id="td" value="${p.targetDateISO}"></div>
+      <button class="btn" id="psave">Guardar ajustes</button>
+      <h2 style="margin-left:0">Plan de entrenamiento</h2>
+      <div class="field"><label>Inicio de la vuelta (fase 1)</label><input type="date" id="rd" value="${p.returnDate || ""}"></div>
+      <p class="dimtext small" style="margin:-6px 0 8px">Las fases se calculan desde esta fecha: 2 semanas de reentrada, 2 de reconstrucción y después progresión. Vacío = todavía no empezó.</p>
+      <button class="btn ghost" id="rdsave">Guardar fecha</button>
+      <h2 style="margin-left:0">Coach IA (Gemini)</h2>
+      <div class="field"><label>API key de Google AI Studio</label>
+        <input type="password" id="gk" value="${UI.esc(c.geminiKey || "")}" placeholder="AIza…"></div>
+      <p class="dimtext small" style="margin:-6px 0 4px">Gratis en aistudio.google.com. Se guarda solo en este dispositivo y habla directo con Google, sin intermediarios.</p>
+      <h2 style="margin-left:0">Cuenta y nube (Supabase)</h2>
+      ${Auth.user ? `
+        <div class="item" style="border:none; padding-top:4px">
+          <div class="ico">👤</div>
+          <div class="body"><div class="name">${UI.esc(Auth.user.email)}</div>
+          <div class="meta">Tus datos se sincronizan solos al cambiar algo</div></div>
+        </div>
+        <div class="grid2">
+          <button class="btn ghost" id="push">☁️ Sincronizar ahora</button>
+          <button class="btn ghost" id="pull">📥 Traer de la nube</button>
+        </div>
+        <button class="btn ghost mt8" id="logout">Cerrar sesión</button>
+      ` : `
+        <details class="mt8"><summary class="dimtext small">Conexión a la nube (avanzado)</summary>
+          <div class="field mt8"><label>URL del proyecto</label>
+            <input id="su" value="${UI.esc(c.supabaseUrl || "")}" placeholder="https://xxxx.supabase.co"></div>
+          <div class="field"><label>Anon key (pública)</label>
+            <input type="password" id="sk" value="${UI.esc(c.supabaseKey || "")}" placeholder="eyJ…"></div>
+        </details>
+        <div class="field"><label>Email</label><input type="email" id="em" autocomplete="email"></div>
+        <div class="field"><label>Contraseña</label><input type="password" id="pw" autocomplete="current-password" placeholder="mínimo 6 caracteres"></div>
+        <div class="grid2">
+          <button class="btn mint" id="login">Entrar</button>
+          <button class="btn ghost" id="signup">Crear cuenta</button>
+        </div>
+        <p class="dimtext small mt8">Cada cuenta ve solo sus datos. Creá tu cuenta una vez y entrá con la misma desde cualquier dispositivo.</p>
+        <p class="dimtext small mt8">Sin cuenta, todo vive solo en este dispositivo — la app funciona igual.</p>
+      `}
+      <h2 style="margin-left:0">Tus datos</h2>
+      <p class="dimtext small" style="margin-bottom:12px">Todo se guarda en este dispositivo. Exportá un respaldo para no perder nada o para migrar en el futuro.</p>
+      <div class="grid2">
+        <button class="btn ghost" id="exp">⬇️ Exportar</button>
+        <label class="btn ghost" style="display:flex">⬆️ Importar<input type="file" accept=".json" hidden id="imp"></label>
+      </div>
+      <button class="btn danger mt14" id="wipe">Borrar todos los datos</button>
+      ${!Storage.persistent ? `<p class="dimtext small center mt14">⚠️ Este entorno no permite guardar de forma permanente. Abrí el archivo en tu navegador o subilo a un hosting para que los datos persistan.</p>` : ""}`,
+      sheet => {
+        sheet.querySelector("#psave").onclick = () => {
+          const sw = parseFloat(sheet.querySelector("#sw").value);
+          const tw = parseFloat(sheet.querySelector("#tw").value);
+          const td = sheet.querySelector("#td").value;
+          if (sw > 0) p.startWeight = sw;
+          if (tw > 0) p.targetWeight = tw;
+          if (td) p.targetDateISO = td;
+          Conn.set({ geminiKey: sheet.querySelector("#gk").value.trim() });
+          const su = sheet.querySelector("#su"), sk = sheet.querySelector("#sk");
+          if (su && sk) Conn.set({ supabaseUrl: su.value.trim(), supabaseKey: sk.value.trim() });
+          Store.commit(); UI.closeSheet(); Router.render();
+          UI.toast("Ajustes guardados");
+        };
+
+        sheet.querySelector("#rdsave").onclick = () => {
+          Plan.setStart(sheet.querySelector("#rd").value || null);
+          UI.closeSheet(); Router.render(); UI.toast("Plan actualizado");
+        };
+
+        if (Auth.user) {
+          sheet.querySelector("#push").onclick = async () => {
+            UI.toast("Sincronizando…");
+            try { await Sync.push(); UI.toast("☁️ Sincronizado"); }
+            catch (e) { UI.toast("No se pudo: " + e.message); }
+          };
+          sheet.querySelector("#pull").onclick = async () => {
+            try {
+              const row = await Sync.pull();
+              if (!confirm(`Se va a reemplazar lo de este dispositivo por la nube (${new Date(row.updated_at).toLocaleString("es")}). ¿Seguimos?`)) return;
+              Store.replace(row.data);
+              UI.closeSheet(); Router.render();
+              UI.toast("📥 Datos restaurados");
+            } catch (e) { UI.toast("No se pudo: " + e.message); }
+          };
+          sheet.querySelector("#logout").onclick = () => { UI.closeSheet(); Session.signOut(); };
+        } else {
+          const doAuth = async mode => {
+            Conn.set({
+              supabaseUrl: sheet.querySelector("#su").value.trim(),
+              supabaseKey: sheet.querySelector("#sk").value.trim(),
+            });
+            if (!Sync.configured()) return UI.toast("Cargá URL y anon key del proyecto");
+            const email = sheet.querySelector("#em").value.trim();
+            const pw = sheet.querySelector("#pw").value;
+            if (!email || pw.length < 6) return UI.toast("Email y contraseña de 6+ caracteres");
+            try {
+              if (mode === "signup") {
+                const j = await Auth.signUp(email, pw);
+                if (!j.access_token) return UI.toast("Cuenta creada: confirmá desde tu email y volvé a entrar");
+              } else {
+                await Auth.signIn(email, pw);
+              }
+              UI.closeSheet();
+              UI.toast("Sesión iniciada 👤");
+              await Session.afterLogin();
+            } catch (e) { UI.toast("No se pudo: " + e.message); }
+          };
+          sheet.querySelector("#login").onclick = () => doAuth("login");
+          sheet.querySelector("#signup").onclick = () => doAuth("signup");
+        }
+        sheet.querySelector("#exp").onclick = () => Storage.exportJSON(Store.s);
+        sheet.querySelector("#imp").onchange = e => {
+          const f = e.target.files[0];
+          if (f) Storage.importJSON(f, data => {
+            Store.replace(data); UI.closeSheet(); Router.render();
+            UI.toast("Datos importados ✓");
+          });
+        };
+        sheet.querySelector("#wipe").onclick = () => {
+          if (confirm("¿Seguro? Se borra todo: entrenos, peso, fotos y hábitos.")) {
+            Store.reset(); UI.closeSheet(); Router.render();
+          }
+        };
+      });
+  },
+};
+
+/* ==========================================================================
+   Router — navegación por pestañas
+   ========================================================================== */
+const Router = (() => {
+  const tabs = [
+    { id: "hoy", name: "Hoy", icon: `<svg viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9h13v-9"/></svg>` },
+    { id: "entreno", name: "Entreno", icon: `<svg viewBox="0 0 24 24"><path d="M2 12h3M19 12h3M6 8v8M18 8v8M9 6v12M15 6v12M9 12h6"/></svg>` },
+    { id: "comidas", name: "Comidas", icon: `<svg viewBox="0 0 24 24"><path d="M7 3v7a2 2 0 0 0 2 2v9M7 3v5M11 3v5M17 3c-2 1.5-3 4-3 7h3v11"/></svg>` },
+    { id: "habitos", name: "Hábitos", icon: `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.5 11 15.5 16.5 9"/></svg>` },
+    { id: "progreso", name: "Progreso", icon: `<svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg>` },
+  ];
+  let current = "hoy", sub = null;
+
+  function renderTabs() {
+    const box = document.getElementById("tabs");
+    box.innerHTML = tabs.map(t => `
+      <button data-tab="${t.id}" class="${t.id === current ? "active" : ""}" aria-label="${t.name}" ${t.id === current ? 'aria-current="page"' : ""}>
+        ${t.icon}<span>${t.name}</span>
+      </button>`).join("");
+    box.querySelectorAll("[data-tab]").forEach(b => b.onclick = () => go(b.dataset.tab));
+  }
+  function render() {
+    renderTabs();
+    Screens[current](document.getElementById("app"), sub);
+    window.scrollTo({ top: 0 });
+  }
+  function go(tab, s = null) { current = tab; sub = s; render(); }
+
+  return { render, go, get current() { return current; } };
+})();
+
+/* ==========================================================================
+   Init
+   ========================================================================== */
+(function init() {
+  // Registrar SW si el archivo está servido por HTTP (para instalar como PWA)
+  if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+    const swCode = `
+      const C = "vform-v1";
+      self.addEventListener("install", e => { self.skipWaiting(); });
+      self.addEventListener("activate", e => e.waitUntil(clients.claim()));
+      self.addEventListener("fetch", e => {
+        e.respondWith(caches.open(C).then(async cache => {
+          try { const res = await fetch(e.request); cache.put(e.request, res.clone()); return res; }
+          catch (_) { return cache.match(e.request); }
+        }));
+      });`;
+    try {
+      navigator.serviceWorker.register(URL.createObjectURL(new Blob([swCode], { type: "text/javascript" })))
+        .catch(() => {});
+    } catch (_) {}
+  }
+  if (!Storage.persistent) {
+    setTimeout(() => UI.toast("Vista previa: los datos no se guardan acá"), 800);
+  }
+
+  // Multi-dispositivo: cada cambio se sube solo (debounce) si hay sesión,
+  // y al arrancar se baja la nube si es más nueva que lo local
+  let pushT = null;
+  Store.subscribe(() => {
+    if (!Auth.user || !Sync.configured()) return;
+    clearTimeout(pushT);
+    pushT = setTimeout(() => Sync.push().catch(() => {}), 4000);
+  });
+  if (Auth.user && Sync.configured()) {
+    Sync.pull().then(row => {
+      if ((row.data?.updatedAt || "") > (Store.s.updatedAt || "")) {
+        Store.replace(row.data);
+        Router.render();
+        UI.toast("☁️ Sincronizado desde la nube");
+      }
+    }).catch(() => {});
+  }
+
+  Router.render();
+})();
+</script>
+<script>
+// Instalable y con respaldo sin conexión (solo cuando se sirve por http/https)
+if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) {
+  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+}
+</script>
+</body>
+</html>
