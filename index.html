@@ -1277,6 +1277,47 @@ const Sync = {
   },
 };
 
+/* ---- Gate: la app no se muestra sin sesión ---- */
+const Gate = {
+  locked() { return Sync.configured() && !Auth.user; },
+  hide() { document.getElementById("gate")?.remove(); document.body.style.overflow = ""; },
+  show() {
+    document.getElementById("modalRoot")?.classList.remove("open");
+    let g = document.getElementById("gate");
+    if (g) return;
+    document.body.style.overflow = "hidden";
+    g = UI.el(`<div id="gate" style="position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px;overflow:auto">
+      <div style="width:100%;max-width:360px">
+        <div style="font-size:42px;margin-bottom:8px">💪</div>
+        <h1 style="font-size:28px;letter-spacing:-.02em;margin-bottom:6px">Fitness</h1>
+        <p class="dimtext" style="margin-bottom:22px">Entrá para ver tu plan y tu progreso.</p>
+        <div class="field"><label>Email</label><input type="email" id="gem" autocomplete="email"></div>
+        <div class="field"><label>Contraseña</label><input type="password" id="gpw" autocomplete="current-password" placeholder="mínimo 6 caracteres"></div>
+        <button class="btn mint" id="glogin">Entrar</button>
+        <p class="dimtext small center mt14"><a href="#" id="gsignup" style="color:var(--dim)">Crear cuenta (primera vez)</a></p>
+        <p class="small center mt8" id="gmsg" style="color:var(--amber);min-height:18px"></p>
+      </div></div>`);
+    document.body.appendChild(g);
+    const msg = t => g.querySelector("#gmsg").textContent = t;
+    const go = async mode => {
+      const email = g.querySelector("#gem").value.trim(), pw = g.querySelector("#gpw").value;
+      if (!email || pw.length < 6) return msg("Email y contraseña de 6+ caracteres");
+      msg("Un segundo…");
+      try {
+        if (mode === "signup") {
+          const j = await Auth.signUp(email, pw);
+          if (!j.access_token) return msg("Cuenta creada. Confirmá desde el mail y volvé a entrar.");
+        } else await Auth.signIn(email, pw);
+        Gate.hide();
+        await Session.afterLogin();
+      } catch (e) { msg("No se pudo: " + e.message); }
+    };
+    g.querySelector("#glogin").onclick = () => go("login");
+    g.querySelector("#gsignup").onclick = e => { e.preventDefault(); go("signup"); };
+    g.querySelector("#gpw").onkeydown = e => { if (e.key === "Enter") go("login"); };
+  },
+};
+
 /* ---- Session: flujos de entrar / salir de cuenta ---- */
 const Session = {
   // Tras loguearse: cambiar al espacio del usuario, adoptar datos de invitado
@@ -2418,6 +2459,8 @@ const Router = (() => {
     box.querySelectorAll("[data-tab]").forEach(b => b.onclick = () => go(b.dataset.tab));
   }
   function render() {
+    if (Gate.locked()) return Gate.show();
+    Gate.hide();
     renderTabs();
     Screens[current](document.getElementById("app"), sub);
     window.scrollTo({ top: 0 });
