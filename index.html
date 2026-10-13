@@ -439,7 +439,8 @@ const CONFIG = {
     { id: "face-pull",      name: "Face pull",                type: "kgreps", unit: "kg",                icon: "🎯", cue: "Liviano, hombro posterior y postura", sets: 3, reps: "12–15", ref: null, step: 1 },
     { id: "prensa",         name: "Prensa de piernas",        type: "kgreps", unit: "kg",                icon: "🦵", cue: "Rango cómodo, sin despegar la cadera", sets: 3, reps: "10", ref: 100, step: 5 },
     { id: "curl-femoral",   name: "Curl femoral en máquina",  type: "kgreps", unit: "kg",                icon: "🦿", cue: "Liviano al principio, buena técnica", sets: 3, reps: "10–12", ref: null, step: 1 },
-    { id: "crunch",         name: "Crunch en polea",          type: "kgreps", unit: "kg",                icon: "🧱", cue: "Enrollá el torso, no tires con los brazos", sets: 3, reps: "15", ref: 45, step: 5 },
+    { id: "fondos",         name: "Fondos en paralelas",      type: "reps",   icon: "🔻", cue: "Bajá controlado, subí con fuerza", sets: 2, reps: "6–10" },
+    { id: "crunch",         name: "Crunch en máquina",         type: "kgreps", unit: "kg",                icon: "🧱", cue: "Enrollá el torso, no tires con los brazos", sets: 3, reps: "15", ref: 45, step: 5 },
     { id: "plancha",        name: "Plancha",                  type: "secs",   icon: "🧱", cue: "Abdomen apretado, sin arquear", sets: 3, reps: "30–45 s" },
     { id: "bird-dog",       name: "Bird-dog",                 type: "reps",   icon: "🐕", cue: "Lento, columna neutra", sets: 2, reps: "10 por lado" },
   ],
@@ -449,7 +450,6 @@ const CONFIG = {
     { id: "colgado",    name: "Colgado de barra",   type: "secs", icon: "🧗", cue: "Hombros activos, cuerpo firme" },
     { id: "australian", name: "Australian Pull Up", type: "reps", icon: "🤸", cue: "Pecho a la barra, escápulas juntas" },
     { id: "flexiones",  name: "Flexiones",          type: "reps", icon: "💪", cue: "Cuerpo en línea, codos a 45°" },
-    { id: "fondos",     name: "Fondos",             type: "reps", icon: "🔻", cue: "Bajá controlado, subí con fuerza" },
   ],
 
   daily: [
@@ -482,7 +482,7 @@ const CONFIG = {
       piernas: { name: "Piernas y core", sub: "Piernas · abdomen",
                  ex: ["prensa", "curl-femoral", "plancha", "bird-dog"] },
       full:    { name: "Full body + V", sub: "Cuerpo completo",
-                 ex: ["dominada-asist", "inclinado", "remo", "prensa", "jalon", "laterales", "crunch"] },
+                 ex: ["dominada-asist", "inclinado", "remo", "prensa", "jalon", "laterales", "fondos", "crunch"] },
     },
   },
 
