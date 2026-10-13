@@ -1670,7 +1670,17 @@ Subviews.sesion = function (root) {
   const today = Dates.todayKey();
   const w = Workouts.byDate(today);
   const isTraining = Dates.isTrainingDay(today);
-  const picked = Subviews._pickDay === today && Subviews._pick ? Plan.sessionById(Subviews._pick, today) : null;
+  // Sesión elegida a mano; si no, la que mejor coincide con lo ya registrado hoy
+  let pickId = Subviews._pickDay === today ? Subviews._pick : null;
+  if (!pickId && w) {
+    const logged = Object.keys(w.exercises || {});
+    let best = 0;
+    Object.entries(CONFIG.plan.sessions).forEach(([id, x]) => {
+      const n = logged.filter(e => x.ex.includes(e)).length;
+      if (n > best) { best = n; pickId = id; }
+    });
+  }
+  const picked = pickId ? Plan.sessionById(pickId, today) : null;
   const sess = picked || Plan.sessionFor(isTraining ? today : Dates.nextTrainingDay(Dates.addDays(today, 1)));
   const ph = Plan.phase(today);
   const ids = sess ? [...sess.ex] : [];
