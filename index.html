@@ -787,6 +787,16 @@ const Plan = {
     const ph = this.phase(key);
     return { id, name: s.name, sub: s.sub, ex: (ph.id === 1 && s.exP1) ? s.exP1 : s.ex, phase: ph };
   },
+  // Sesión que mejor coincide con lo registrado en un entreno
+  inferSession(w, key) {
+    const logged = Object.keys(w?.exercises || {});
+    let best = 0, id = null;
+    Object.entries(CONFIG.plan.sessions).forEach(([sid, x]) => {
+      const n = logged.filter(e => x.ex.includes(e)).length;
+      if (n > best) { best = n; id = sid; }
+    });
+    return id ? this.sessionById(id, key) : null;
+  },
   isCardio(key) { const ph = this.phase(key); return !!(ph.cardio && ph.cardio.includes(Dates.weekday(key))); },
   setsFor(ex, key) { const ph = this.phase(key); return ph.setsCap ? Math.min(ph.setsCap, ex.sets) : ex.sets; },
   suggestKg(ex, key) {
@@ -1531,7 +1541,10 @@ Screens.hoy = function (root) {
   const isTraining = Dates.isTrainingDay(today);
   const nextT = Dates.nextTrainingDay(isTraining && !Workouts.byDate(today) ? today : Dates.addDays(today, 1));
   const doneToday = !!Workouts.byDate(today);
-  const sess = Plan.sessionFor(isTraining ? today : nextT);
+  const todayW = Workouts.byDate(today);
+  const doneSess = todayW ? Plan.inferSession(todayW, today) : null;
+  const sess = doneSess || Plan.sessionFor(isTraining ? today : nextT);
+  const nextSess = Plan.sessionFor(nextT);
   const ph = Plan.phase();
   const daily = Store.s.dailyDone[today] || {};
   const hour = new Date().getHours();
@@ -1594,17 +1607,17 @@ Screens.hoy = function (root) {
       <p class="dimtext mt14">Objetivo: ${CONFIG.goal.pullupTarget} en una sola serie, sin asistencia.</p>
     </div>
 
-    <h2>${isTraining ? "Entrenamiento de hoy" : "Próximo entrenamiento"}</h2>
+    <h2>${isTraining || doneToday ? "Entrenamiento de hoy" : "Próximo entrenamiento"}</h2>
     <div class="card">
       <div class="row">
         <div>
-          <div class="metric"><span class="n" style="font-size:22px">${isTraining ? "Hoy" : Dates.fmt(nextT, {weekday:"long"})}</span></div>
+          <div class="metric"><span class="n" style="font-size:22px">${isTraining || doneToday ? "Hoy" : Dates.fmt(nextT, {weekday:"long"})}</span></div>
           <p class="dimtext mt8">${sess ? `<strong>${sess.name}</strong> · ${sess.ex.map(id => Ex.get(id).name).join(" · ")}` : (Plan.isCardio(today) ? "Caminata de 5 km. Sin pesas." : "Descanso")}</p>
         </div>
         <span class="tag ${doneToday ? "mint" : "violet"}">${doneToday ? "✓ Hecho" : (isTraining ? "Pendiente" : Dates.fmt(nextT))}</span>
       </div>
       ${isTraining && !doneToday ? `<button class="btn mint mt14" data-go="entreno">Empezar sesión</button>` : ""}
-      ${doneToday ? `<button class="btn ghost mt14" data-go="entreno">Ver sesión de hoy</button>` : ""}
+      ${doneToday ? `${nextSess ? `<p class="dimtext small mt14">Próximo: <strong>${Dates.fmt(nextT, {weekday:"long"})}</strong> · ${nextSess.name}</p>` : ""}<button class="btn ghost mt8" data-go="entreno">Ver sesión de hoy</button>` : ""}
     </div>
 
     <h2>Todos los días</h2>
@@ -1673,12 +1686,7 @@ Subviews.sesion = function (root) {
   // Sesión elegida a mano; si no, la que mejor coincide con lo ya registrado hoy
   let pickId = Subviews._pickDay === today ? Subviews._pick : null;
   if (!pickId && w) {
-    const logged = Object.keys(w.exercises || {});
-    let best = 0;
-    Object.entries(CONFIG.plan.sessions).forEach(([id, x]) => {
-      const n = logged.filter(e => x.ex.includes(e)).length;
-      if (n > best) { best = n; pickId = id; }
-    });
+    pickId = Plan.inferSession(w, today)?.id || null;
   }
   const picked = pickId ? Plan.sessionById(pickId, today) : null;
   const sess = picked || Plan.sessionFor(isTraining ? today : Dates.nextTrainingDay(Dates.addDays(today, 1)));
