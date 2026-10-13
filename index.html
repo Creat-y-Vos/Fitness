@@ -3,45 +3,51 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0B0B0F">
+<meta name="theme-color" content="#121211">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="description" content="VForm — registro de entrenamiento, hábitos y progreso">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>VForm</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='24' fill='%230B0B0F'/%3E%3Cpath d='M25 28 L50 74 L75 28' stroke='%235EE6A8' stroke-width='10' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='0' fill='%23121211'/%3E%3Cpath d='M25 28 L50 74 L75 28' stroke='%23FF5A1F' stroke-width='10' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <style>
 /* ==========================================================================
    VForm — Design tokens
    ========================================================================== */
 :root {
-  --bg: #0B0B0F;
-  --surface: #15151B;
-  --elev: #1D1D25;
-  --line: rgba(255,255,255,.07);
-  --line-strong: rgba(255,255,255,.13);
-  --text: #F5F5F7;
-  --dim: #8E8E99;
-  --faint: #5A5A66;
+  /* Bitácora — grafito, hueso y un solo acento */
+  --bg: #121211;
+  --surface: #121211;
+  --elev: #1C1B19;
+  --line: #2E2C29;
+  --line-strong: #3A3834;
+  --text: #EDE8DF;
+  --dim: #8F8A82;
+  --faint: #6E6A64;
 
-  /* Acentos funcionales por dominio */
-  --mint: #5EE6A8;      /* entreno / peso */
-  --violet: #9D8CFF;    /* dominadas */
-  --coral: #FF7A59;     /* rachas / hábitos */
-  --amber: #FFC663;     /* comidas */
+  /* Un único acento. Los nombres viejos quedan como alias para no tocar la lógica */
+  --accent: #FF5A1F;
+  --mint: var(--accent);
+  --violet: var(--text);
+  --coral: var(--accent);
+  --amber: var(--text);
   --red: #FF5D5D;
 
-  --mint-dim: rgba(94,230,168,.14);
-  --violet-dim: rgba(157,140,255,.14);
-  --coral-dim: rgba(255,122,89,.14);
-  --amber-dim: rgba(255,198,99,.14);
+  --mint-dim: rgba(255,90,31,.12);
+  --violet-dim: rgba(237,232,223,.08);
+  --coral-dim: rgba(255,90,31,.12);
+  --amber-dim: rgba(237,232,223,.08);
 
-  --radius: 20px;
-  --radius-s: 12px;
-  --pad: 20px;
-  --nav-h: 72px;
-  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --radius: 0px;
+  --radius-s: 0px;
+  --pad: 18px;
+  --nav-h: 68px;
+  --font: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --display: "Barlow Condensed", "Arial Narrow", sans-serif;
 
   --ease: cubic-bezier(.22,.9,.3,1);
 }
@@ -359,6 +365,90 @@ input[type=range].scrub { width: 100%; margin-top: 12px; accent-color: var(--min
 .ai-out p { margin-bottom: 10px; }
 .ai-out strong { color: var(--mint); }
 code { background: var(--elev); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; font-size: 11.5px; word-break: break-all; }
+
+/* ==========================================================================
+   Bitácora — capa de rediseño (tipografía, bordes, sin emojis ni anillos)
+   ========================================================================== */
+body { font-size: 14px; line-height: 1.5; }
+h1.greet { font-family: var(--display); font-size: 42px; font-weight: 700; line-height: .95; letter-spacing: 0; text-transform: uppercase; }
+.sub { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; margin-top: 6px; }
+h2 { font-family: var(--font); font-size: 11px; font-weight: 500; letter-spacing: .1em; color: var(--dim); margin: 28px 0 0; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+.card { background: transparent; border: 1px solid var(--line); border-radius: 0; }
+h2 + .card { border-top: none; }
+.eyebrow { font-weight: 500; letter-spacing: .1em; }
+.metric .n { font-family: var(--display); font-weight: 600; font-size: 38px; letter-spacing: 0; }
+.metric.xl .n { font-size: 56px; }
+.metric .u { font-weight: 400; font-size: 11px; }
+.item { padding: 12px 0; border-bottom: 1px dashed var(--line); }
+.item .ico, .ico { display: none !important; }
+.item .name, .card .name { font-family: var(--display); font-size: 19px; font-weight: 500; text-transform: uppercase; letter-spacing: .01em; }
+.item .meta { font-size: 11.5px; }
+.check { border-radius: 0; width: 28px; height: 28px; border: 1px solid var(--line-strong); }
+.check.on, .check.on.amber { background: var(--text); border-color: var(--text); color: var(--bg); }
+.check.on.bad { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+.btn { border-radius: 0; font-family: var(--display); font-size: 19px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; min-height: 52px; }
+.btn:active { transform: none; opacity: .85; }
+.btn.ghost { background: transparent; border: 1px solid var(--line-strong); font-family: var(--font); font-size: 13px; font-weight: 500; letter-spacing: .02em; text-transform: none; }
+.btn.mint { background: var(--accent); color: #121211; }
+.btn.violet { background: var(--text); color: #121211; }
+.btn.small { border-radius: 0; min-height: 40px; font-family: var(--font); font-size: 12px; font-weight: 500; text-transform: none; letter-spacing: .02em; }
+.btn.danger { background: transparent; border: 1px solid rgba(255,93,93,.4); font-family: var(--font); font-size: 13px; text-transform: none; letter-spacing: 0; }
+.pill { border-radius: 0; font-weight: 500; font-size: 11px; background: transparent; border: 1px solid var(--line-strong); }
+.pill.up { background: transparent; border-color: var(--accent); color: var(--accent); }
+.pill.down { background: transparent; border-color: rgba(255,93,93,.5); }
+.pill.flat { background: transparent; }
+.tag { border-radius: 0; font-weight: 500; background: transparent !important; border: 1px solid currentColor; }
+.field label { font-weight: 500; letter-spacing: .06em; text-transform: uppercase; font-size: 11px; }
+.field input, .field textarea, .field select, .stepper { border-radius: 0; background: transparent; }
+.stepper input { font-family: var(--display); font-size: 22px; font-weight: 600; }
+.seg { background: transparent; border: 1px solid var(--line); border-radius: 0; padding: 0; gap: 0; }
+.seg button { border-radius: 0; font-weight: 500; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; padding: 12px 6px; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button.active { background: var(--text); color: var(--bg); box-shadow: none; }
+.setrow .idx { font-family: var(--display); font-size: 18px; color: var(--dim); }
+.tbtn { border-radius: 0; background: transparent; border: 1px solid var(--accent); color: var(--accent); }
+.tbtn.run { background: var(--accent); color: #121211; }
+.coach { border-left: none; border: 1px dashed var(--line-strong); padding: 12px 14px; font-size: 13.5px; color: #BDB7AD; }
+.coach em { color: var(--accent); font-weight: 600; }
+.rail .track { border-radius: 0; height: 2px; }
+.rail .fill { background: var(--accent); border-radius: 0; height: 2px; }
+.rail .dot { border-radius: 0; font-family: var(--display); font-weight: 700; }
+.rail .stage.done .dot { background: var(--text); border-color: var(--text); color: var(--bg); }
+.rail .stage.now .dot { border-color: var(--accent); color: var(--accent); box-shadow: none; }
+.chart text { font-family: var(--font); }
+nav.tabbar { background: var(--bg); backdrop-filter: none; -webkit-backdrop-filter: none; }
+nav.tabbar button { font-weight: 500; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: #5A5751; }
+nav.tabbar button svg { stroke-width: 1.6; }
+nav.tabbar button.active { color: var(--text); box-shadow: inset 0 2px 0 var(--accent); }
+nav.tabbar button.active svg { stroke: var(--text); }
+@media (min-width: 900px) { nav.tabbar button { border-radius: 0; } nav.tabbar button.active { box-shadow: inset 2px 0 0 var(--accent); } }
+.modal-root .scrim { backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(0,0,0,.72); }
+.modal-root .sheet { border-radius: 0; background: var(--bg); }
+.sheet .grab { border-radius: 0; }
+.sheet h3 { font-family: var(--display); font-size: 30px; font-weight: 700; text-transform: uppercase; letter-spacing: 0; }
+#toast { border-radius: 0; background: var(--text); color: var(--bg); border: none; font-weight: 500; font-size: 13px; }
+.stat { border-radius: 0; background: transparent; }
+.photo-grid figure, .compare { border-radius: 0; }
+.photo-grid figcaption { background: rgba(18,18,17,.8); padding: 6px 8px; }
+.compare .cap { border-radius: 0; }
+.ai-out strong { color: var(--accent); }
+code { border-radius: 0; }
+:focus-visible { outline-color: var(--accent); border-radius: 0; }
+/* Fila de 3 indicadores (reemplaza los anillos) */
+.ledger { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); }
+.ledger > div { padding: 4px 12px 2px; border-left: 1px solid var(--line); display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.ledger > div:first-child { border-left: none; padding-left: 0; }
+.ledger .k { font-size: 10.5px; letter-spacing: .1em; color: var(--dim); }
+.ledger .v { font-family: var(--display); font-size: 34px; font-weight: 600; line-height: 1; }
+.ledger .v small { font-size: 18px; color: #5A5751; }
+.ledger .d { font-size: 11px; color: var(--dim); }
+/* Selector de días de entreno */
+.daypick { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 4px; }
+.daypick label { display: flex; align-items: center; justify-content: center; height: 44px; border: 1px solid var(--line-strong); font-size: 12px; cursor: pointer; }
+.daypick input { position: absolute; opacity: 0; pointer-events: none; }
+.daypick input:checked + span { color: var(--bg); }
+.daypick label:has(input:checked) { background: var(--accent); border-color: var(--accent); color: #121211; }
+.daypick label:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
 </style>
 </head>
 <body>
@@ -412,8 +502,8 @@ const CONFIG = {
   storageKey: "vform.v1",
 
   goal: {
-    startWeight: 80,
-    targetWeight: 75,
+    startWeight: 98,
+    targetWeight: 92,
     targetDateISO: "2026-12-31",
     hangTargetSecs: 90,
     pullupTarget: 5,   // reps estrictas en una sola serie
@@ -424,39 +514,39 @@ const CONFIG = {
   // type: "kgreps" (kilos × repeticiones) | "reps" | "secs"
   // ref = carga de referencia (kg) · step = salto de carga · noScale = no se reduce en la reentrada
   exercises: [
-    { id: "dominada",       name: "Dominada estricta",        type: "reps",   icon: "🧗", cue: "Sin balanceo. 2–3 intentos al inicio, fresco, parando antes del fallo", sets: 3, reps: "2–3", noScale: true },
-    { id: "dominada-asist", name: "Dominada asistida",        type: "kgreps", unit: "kg de asistencia", icon: "🪢", cue: "Menos asistencia = más fuerte", sets: 3, reps: "5", ref: 50, step: 2.5, noScale: true, assist: true },
-    { id: "banca",          name: "Press de banca con barra", type: "kgreps", unit: "kg por lado",       icon: "🏋️", cue: "Escápulas atrás, pies firmes", sets: 3, reps: "8–10", ref: 20, step: 2.5 },
-    { id: "jalon",          name: "Jalón al pecho",           type: "kgreps", unit: "kg",                icon: "⬇️", cue: "Pecho arriba, codos hacia abajo", sets: 3, reps: "8–12", ref: 66, step: 1 },
-    { id: "inclinado",      name: "Press inclinado con mancuernas", type: "kgreps", unit: "kg por mancuerna", icon: "📐", cue: "Controlá la bajada, pecho abierto", sets: 3, reps: "8–12", ref: 17.5, step: 2.5 },
-    { id: "remo",           name: "Remo en máquina/polea",    type: "kgreps", unit: "kg",                icon: "🚣", cue: "Grosor de espalda: tirá con los codos", sets: 3, reps: "8–12", ref: 66, step: 1 },
-    { id: "laterales",      name: "Elevaciones laterales",    type: "kgreps", unit: "kg por mancuerna", icon: "🪽", cue: "Controladas, sin lanzar la mancuerna", sets: 3, reps: "12–15", ref: 5, step: 1 },
-    { id: "triceps",        name: "Tríceps en polea",         type: "kgreps", unit: "kg",                icon: "🔻", cue: "Codos pegados al cuerpo", sets: 2, reps: "10–15", ref: 41, step: 1 },
-    { id: "curl",           name: "Curl de bíceps",           type: "kgreps", unit: "kg por mancuerna", icon: "💪", cue: "Sin balancear el torso", sets: 2, reps: "10–15", ref: 8.75, step: 1.25 },
-    { id: "pecho-maq",      name: "Press de pecho en máquina", type: "kgreps", unit: "kg",               icon: "🫸", cue: "Hombros atrás y abajo", sets: 3, reps: "10", ref: 52, step: 1 },
-    { id: "jalon-abierto",  name: "Jalón agarre abierto",     type: "kgreps", unit: "kg",                icon: "🪂", cue: "Ancho de espalda: codos hacia los costados", sets: 3, reps: "8", ref: 59, step: 1 },
-    { id: "press-hombros",  name: "Press de hombros con mancuernas", type: "kgreps", unit: "kg por mancuerna", icon: "🙌", cue: "Costillas abajo, sin arquear", sets: 3, reps: "10–12", ref: 15, step: 2.5 },
-    { id: "face-pull",      name: "Face pull",                type: "kgreps", unit: "kg",                icon: "🎯", cue: "Liviano, hombro posterior y postura", sets: 3, reps: "12–15", ref: null, step: 1 },
-    { id: "prensa",         name: "Prensa de piernas",        type: "kgreps", unit: "kg",                icon: "🦵", cue: "Rango cómodo, sin despegar la cadera", sets: 3, reps: "10", ref: 100, step: 5 },
-    { id: "curl-femoral",   name: "Curl femoral en máquina",  type: "kgreps", unit: "kg",                icon: "🦿", cue: "Liviano al principio, buena técnica", sets: 3, reps: "10–12", ref: null, step: 1 },
-    { id: "fondos",         name: "Fondos en paralelas",      type: "reps",   icon: "🔻", cue: "Bajá controlado, subí con fuerza", sets: 2, reps: "6–10" },
-    { id: "curl-barra",     name: "Curl de bíceps (barra o máquina)", type: "kgreps", unit: "kg", icon: "💪", cue: "Sin balancear el torso", sets: 2, reps: "10–15", ref: null, step: 2.5 },
-    { id: "crunch",         name: "Crunch en máquina",         type: "kgreps", unit: "kg",                icon: "🧱", cue: "Enrollá el torso, no tires con los brazos", sets: 3, reps: "15", ref: 45, step: 5 },
-    { id: "plancha",        name: "Plancha",                  type: "secs",   icon: "🧱", cue: "Abdomen apretado, sin arquear", sets: 3, reps: "30–45 s" },
-    { id: "bird-dog",       name: "Bird-dog",                 type: "reps",   icon: "🐕", cue: "Lento, columna neutra", sets: 2, reps: "10 por lado" },
+    { id: "dominada",       name: "Dominada estricta",        type: "reps",   icon: "", cue: "Sin balanceo. 2–3 intentos al inicio, fresco, parando antes del fallo", sets: 3, reps: "2–3", noScale: true },
+    { id: "dominada-asist", name: "Dominada asistida",        type: "kgreps", unit: "kg de asistencia", icon: "", cue: "Menos asistencia = más fuerte", sets: 3, reps: "5", ref: 50, step: 2.5, noScale: true, assist: true },
+    { id: "banca",          name: "Press de banca con barra", type: "kgreps", unit: "kg por lado",       icon: "", cue: "Escápulas atrás, pies firmes", sets: 3, reps: "8–10", ref: 20, step: 2.5 },
+    { id: "jalon",          name: "Jalón al pecho",           type: "kgreps", unit: "kg",                icon: "⬇", cue: "Pecho arriba, codos hacia abajo", sets: 3, reps: "8–12", ref: 66, step: 1 },
+    { id: "inclinado",      name: "Press inclinado con mancuernas", type: "kgreps", unit: "kg por mancuerna", icon: "", cue: "Controlá la bajada, pecho abierto", sets: 3, reps: "8–12", ref: 17.5, step: 2.5 },
+    { id: "remo",           name: "Remo en máquina/polea",    type: "kgreps", unit: "kg",                icon: "", cue: "Grosor de espalda: tirá con los codos", sets: 3, reps: "8–12", ref: 66, step: 1 },
+    { id: "laterales",      name: "Elevaciones laterales",    type: "kgreps", unit: "kg por mancuerna", icon: "", cue: "Controladas, sin lanzar la mancuerna", sets: 3, reps: "12–15", ref: 5, step: 1 },
+    { id: "triceps",        name: "Tríceps en polea",         type: "kgreps", unit: "kg",                icon: "", cue: "Codos pegados al cuerpo", sets: 2, reps: "10–15", ref: 41, step: 1 },
+    { id: "curl",           name: "Curl de bíceps",           type: "kgreps", unit: "kg por mancuerna", icon: "", cue: "Sin balancear el torso", sets: 2, reps: "10–15", ref: 8.75, step: 1.25 },
+    { id: "pecho-maq",      name: "Press de pecho en máquina", type: "kgreps", unit: "kg",               icon: "", cue: "Hombros atrás y abajo", sets: 3, reps: "10", ref: 52, step: 1 },
+    { id: "jalon-abierto",  name: "Jalón agarre abierto",     type: "kgreps", unit: "kg",                icon: "", cue: "Ancho de espalda: codos hacia los costados", sets: 3, reps: "8", ref: 59, step: 1 },
+    { id: "press-hombros",  name: "Press de hombros con mancuernas", type: "kgreps", unit: "kg por mancuerna", icon: "", cue: "Costillas abajo, sin arquear", sets: 3, reps: "10–12", ref: 15, step: 2.5 },
+    { id: "face-pull",      name: "Face pull",                type: "kgreps", unit: "kg",                icon: "", cue: "Liviano, hombro posterior y postura", sets: 3, reps: "12–15", ref: null, step: 1 },
+    { id: "prensa",         name: "Prensa de piernas",        type: "kgreps", unit: "kg",                icon: "", cue: "Rango cómodo, sin despegar la cadera", sets: 3, reps: "10", ref: 100, step: 5 },
+    { id: "curl-femoral",   name: "Curl femoral en máquina",  type: "kgreps", unit: "kg",                icon: "", cue: "Liviano al principio, buena técnica", sets: 3, reps: "10–12", ref: null, step: 1 },
+    { id: "fondos",         name: "Fondos en paralelas",      type: "reps",   icon: "", cue: "Bajá controlado, subí con fuerza", sets: 2, reps: "6–10" },
+    { id: "curl-barra",     name: "Curl de bíceps (barra o máquina)", type: "kgreps", unit: "kg", icon: "", cue: "Sin balancear el torso", sets: 2, reps: "10–15", ref: null, step: 2.5 },
+    { id: "crunch",         name: "Crunch en máquina",         type: "kgreps", unit: "kg",                icon: "", cue: "Enrollá el torso, no tires con los brazos", sets: 3, reps: "15", ref: 45, step: 5 },
+    { id: "plancha",        name: "Plancha",                  type: "secs",   icon: "", cue: "Abdomen apretado, sin arquear", sets: 3, reps: "30–45 s" },
+    { id: "bird-dog",       name: "Bird-dog",                 type: "reps",   icon: "", cue: "Lento, columna neutra", sets: 2, reps: "10 por lado" },
   ],
 
   // Ejercicios del plan anterior (calistenia): se conservan para que el historial se siga viendo
   legacyExercises: [
-    { id: "colgado",    name: "Colgado de barra",   type: "secs", icon: "🧗", cue: "Hombros activos, cuerpo firme" },
-    { id: "australian", name: "Australian Pull Up", type: "reps", icon: "🤸", cue: "Pecho a la barra, escápulas juntas" },
-    { id: "flexiones",  name: "Flexiones",          type: "reps", icon: "💪", cue: "Cuerpo en línea, codos a 45°" },
+    { id: "colgado",    name: "Colgado de barra",   type: "secs", icon: "", cue: "Hombros activos, cuerpo firme" },
+    { id: "australian", name: "Australian Pull Up", type: "reps", icon: "", cue: "Pecho a la barra, escápulas juntas" },
+    { id: "flexiones",  name: "Flexiones",          type: "reps", icon: "", cue: "Cuerpo en línea, codos a 45°" },
   ],
 
   daily: [
-    { id: "caminata",   name: "Caminata",   icon: "🚶", meta: "30–45 min a paso firme" },
-    { id: "movilidad",  name: "Movilidad",  icon: "🌀", meta: "Hombros, cadera y columna" },
-    { id: "elongacion", name: "Elongación", icon: "🧘", meta: "Dorsales, pecho e isquios" },
+    { id: "caminata",   name: "Caminata",   icon: "", meta: "30–45 min a paso firme" },
+    { id: "movilidad",  name: "Movilidad",  icon: "", meta: "Hombros, cadera y columna" },
+    { id: "elongacion", name: "Elongación", icon: "", meta: "Dorsales, pecho e isquios" },
   ],
 
   // Plan por fases. Todo arranca el día que se toca "Empezar la vuelta" (profile.returnDate).
@@ -500,39 +590,39 @@ const CONFIG = {
 
   meals: {
     desayuno: [
-      { id: "huevos",   name: "Huevos",   icon: "🥚" },
-      { id: "tostadas", name: "Tostadas", icon: "🍞" },
-      { id: "tomate",   name: "Tomate",   icon: "🍅" },
-      { id: "aguacate", name: "Aguacate", icon: "🥑" },
-      { id: "yogur",    name: "Yogur",    icon: "🥣" },
-      { id: "proteina", name: "Proteína", icon: "🥤" },
-      { id: "avena",    name: "Avena",    icon: "🌾" },
-      { id: "fruta",    name: "Fruta",    icon: "🍎" },
+      { id: "huevos",   name: "Huevos",   icon: "" },
+      { id: "tostadas", name: "Tostadas", icon: "" },
+      { id: "tomate",   name: "Tomate",   icon: "" },
+      { id: "aguacate", name: "Aguacate", icon: "" },
+      { id: "yogur",    name: "Yogur",    icon: "" },
+      { id: "proteina", name: "Proteína", icon: "" },
+      { id: "avena",    name: "Avena",    icon: "" },
+      { id: "fruta",    name: "Fruta",    icon: "" },
     ],
     comida: [
-      { id: "pollo-arroz", name: "Pollo · arroz · verduras", icon: "🍗" },
-      { id: "ternera-patata", name: "Ternera · patata", icon: "🥩" },
-      { id: "atun-ensalada", name: "Atún · ensalada", icon: "🐟" },
-      { id: "lomo-cerdo", name: "Lomo de cerdo", icon: "🍖" },
+      { id: "pollo-arroz", name: "Pollo · arroz · verduras", icon: "" },
+      { id: "ternera-patata", name: "Ternera · patata", icon: "" },
+      { id: "atun-ensalada", name: "Atún · ensalada", icon: "" },
+      { id: "lomo-cerdo", name: "Lomo de cerdo", icon: "" },
     ],
     cena: [
-      { id: "salmon", name: "Salmón", icon: "🐠" },
-      { id: "tortilla", name: "Tortilla francesa", icon: "🍳" },
-      { id: "carne-magra", name: "Carne magra", icon: "🥩" },
-      { id: "milanesas", name: "Milanesas de carré de cerdo", icon: "🍽️" },
+      { id: "salmon", name: "Salmón", icon: "" },
+      { id: "tortilla", name: "Tortilla francesa", icon: "" },
+      { id: "carne-magra", name: "Carne magra", icon: "" },
+      { id: "milanesas", name: "Milanesas de carré de cerdo", icon: "" },
     ],
   },
 
   // Hábitos: kind "good" suma racha al marcarse; "avoid" suma racha al NO marcarse
   habits: [
-    { id: "agua",     name: "Agua",        icon: "💧", kind: "good",  meta: "2 litros o más" },
-    { id: "proteina", name: "Proteína",    icon: "🍳", kind: "good",  meta: "En cada comida" },
-    { id: "creatina", name: "Creatina",    icon: "⚡", kind: "good",  meta: "5 g diarios" },
-    { id: "coca",     name: "Coca-Cola",   icon: "🥤", kind: "avoid", meta: "Marcá solo si tomaste" },
-    { id: "vino",     name: "Vino",        icon: "🍷", kind: "avoid", meta: "Marcá solo si tomaste" },
-    { id: "sueno",    name: "Dormí bien",  icon: "😴", kind: "good",  meta: "7 horas o más" },
-    { id: "entrene",  name: "Entrené",     icon: "🏋️", kind: "good",  meta: "Sesión completa" },
-    { id: "camine",   name: "Caminé",      icon: "🚶", kind: "good",  meta: "Caminata del día" },
+    { id: "agua",     name: "Agua",        icon: "", kind: "good",  meta: "2 litros o más" },
+    { id: "proteina", name: "Proteína",    icon: "", kind: "good",  meta: "En cada comida" },
+    { id: "creatina", name: "Creatina",    icon: "", kind: "good",  meta: "5 g diarios" },
+    { id: "coca",     name: "Coca-Cola",   icon: "", kind: "avoid", meta: "Marcá solo si tomaste" },
+    { id: "vino",     name: "Vino",        icon: "", kind: "avoid", meta: "Marcá solo si tomaste" },
+    { id: "sueno",    name: "Dormí bien",  icon: "", kind: "good",  meta: "7 horas o más" },
+    { id: "entrene",  name: "Entrené",     icon: "", kind: "good",  meta: "Sesión completa" },
+    { id: "camine",   name: "Caminé",      icon: "", kind: "good",  meta: "Caminata del día" },
   ],
 
   measures: [
@@ -575,7 +665,7 @@ const Storage = (() => {
     save(state) {
       if (!persistent) { memory = state; return; }
       try { localStorage.setItem(key(), JSON.stringify(state)); }
-      catch (e) { console.warn("No se pudo guardar:", e); UI.toast("⚠️ Almacenamiento lleno"); }
+      catch (e) { console.warn("No se pudo guardar:", e); UI.toast("Almacenamiento lleno"); }
     },
     exportJSON(state) {
       const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
@@ -702,6 +792,11 @@ const Store = (() => {
   const ensure = st => {
     st.settings = Object.assign({ geminiKey: "", supabaseUrl: "", supabaseKey: "" }, st.settings || {});
     st.aiCache = st.aiCache || {};
+    // Los defaults viejos (80 → 75) no eran los tuyos: si nunca se tocaron, pasan a 98 → 92
+    if (st.profile && st.profile.startWeight === 80 && st.profile.targetWeight === 75) {
+      st.profile.startWeight = CONFIG.goal.startWeight;
+      st.profile.targetWeight = CONFIG.goal.targetWeight;
+    }
     st.updatedAt = st.updatedAt || new Date().toISOString();
     return st;
   };
@@ -775,9 +870,20 @@ const Plan = {
     return d < 14 ? 1 : d < 28 ? 2 : 3;
   },
   phase(key) { return CONFIG.plan.phases.find(p => p.id === this.phaseId(key)); },
+  // Días elegidos en Ajustes: las sesiones de la fase se reparten en orden sobre esos días
+  daysMap(ph) {
+    const custom = Store.s.profile.trainDays;
+    if (!Array.isArray(custom) || !custom.length) return ph.days;
+    const order = k => (k + 6) % 7;
+    const sessions = Object.keys(ph.days).map(Number).sort((a, b) => order(a) - order(b)).map(k => ph.days[k]);
+    const days = custom.map(Number).sort((a, b) => order(a) - order(b));
+    const m = {};
+    days.forEach((d, i) => { if (sessions[i]) m[d] = sessions[i]; });
+    return m;
+  },
   sessionFor(key) {
     const ph = this.phase(key);
-    const sid = ph.days[Dates.weekday(key)];
+    const sid = this.daysMap(ph)[Dates.weekday(key)];
     if (!sid) return null;
     const s = CONFIG.plan.sessions[sid];
     return { id: sid, name: s.name, sub: s.sub, ex: (ph.id === 1 && s.exP1) ? s.exP1 : s.ex, phase: ph };
@@ -809,7 +915,7 @@ const Plan = {
     const ph = this.phase();
     const n = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
     const order = k => (k + 6) % 7;
-    const days = Object.keys(ph.days).map(Number).sort((a, b) => order(a) - order(b)).map(k => n[k]).join(" · ");
+    const days = Object.keys(this.daysMap(ph)).map(Number).sort((a, b) => order(a) - order(b)).map(k => n[k]).join(" · ");
     return days + (ph.cardio ? " · caminata " + ph.cardio.map(k => n[k]).join(", ") : "");
   },
   progressText() {
@@ -1302,8 +1408,7 @@ const Gate = {
     document.body.style.overflow = "hidden";
     g = UI.el(`<div id="gate" style="position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px;overflow:auto">
       <div style="width:100%;max-width:360px">
-        <div style="font-size:42px;margin-bottom:8px">💪</div>
-        <h1 style="font-size:28px;letter-spacing:-.02em;margin-bottom:6px">Fitness</h1>
+        <h1 class="greet" style="margin-bottom:10px">Fitness</h1>
         <p class="dimtext" style="margin-bottom:22px">Entrá para ver tu plan y tu progreso.</p>
         <div class="field"><label>Email</label><input type="email" id="gem" autocomplete="email"></div>
         <div class="field"><label>Contraseña</label><input type="password" id="gpw" autocomplete="current-password" placeholder="mínimo 6 caracteres"></div>
@@ -1419,7 +1524,7 @@ const UI = {
     return `
       <svg class="chart" viewBox="0 0 ${W} ${H}" role="img">
         <defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="${color}" stop-opacity=".22"/>
+          <stop offset="0%" stop-color="${color}" stop-opacity=".08"/>
           <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
         </linearGradient></defs>
         ${gridVals.map(v => `
@@ -1429,7 +1534,7 @@ const UI = {
           <line x1="${padL}" y1="${Y(goal).toFixed(1)}" x2="${W-padR}" y2="${Y(goal).toFixed(1)}"
             stroke="${color}" stroke-opacity=".5" stroke-width="1" stroke-dasharray="4 4"/>` : ""}
         <path d="${area}" fill="url(#${gid})"/>
-        <path d="${path}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="${path}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linejoin="round"/>
         <circle cx="${X(points.length-1).toFixed(1)}" cy="${Y(last.y).toFixed(1)}" r="4" fill="${color}"/>
         ${labelIdx.map(i => `<text x="${X(i).toFixed(1)}" y="${H-6}" text-anchor="${i===0?"start":i===points.length-1?"end":"middle"}">${points[i].label}</text>`).join("")}
       </svg>`;
@@ -1555,14 +1660,14 @@ Screens.hoy = function (root) {
   <div class="screen">
     <div class="row">
       <div>
-        <h1 class="greet">${greet}${Auth.user ? ", " + UI.esc(Auth.user.email.split("@")[0]) : ""} 👋</h1>
+        <h1 class="greet">${greet}${Auth.user ? ", " + UI.esc(Auth.user.email.split("@")[0]) : ""} </h1>
         <p class="sub">${Dates.fmtLong(today)}</p>
       </div>
-      <button class="btn ghost small" data-settings aria-label="Ajustes">⚙︎</button>
+      <button class="btn ghost small" data-settings aria-label="Ajustes">Ajustes</button>
     </div>
 
     <div class="coach">${Coach.today()}</div>
-    <button class="btn ghost small mt8" data-ai>🧠 Análisis del coach con IA</button>
+    <button class="btn ghost small mt8" data-ai>Análisis del coach con IA</button>
 
     ${!Plan.started() ? `
     <div class="card" style="border-color: var(--violet); background: var(--violet-dim)">
@@ -1575,26 +1680,17 @@ Screens.hoy = function (root) {
       <p class="dimtext small mt8">${Plan.progressText()}. ${ph.rule}</p>
     </div>`}
 
-    <h2>Tu objetivo</h2>
+    <h2>HACIA EL OBJETIVO</h2>
     <div class="card">
-      <div class="rings">
-        <div class="ring-item">
-          ${UI.ring({ pct: Progress.weightPct(), color: "var(--mint)", value: cur.toFixed(1), sub: `→ ${p.targetWeight} kg` })}
-          <span class="lbl">Peso</span>
-        </div>
-        <div class="ring-item">
-          ${UI.ring({ pct: Pullup.pct(), color: "var(--violet)", value: `${Pullup.bestReps()}`, sub: `→ ${CONFIG.goal.pullupTarget} reps` })}
-          <span class="lbl">Dominadas</span>
-        </div>
-        <div class="ring-item">
-          ${UI.ring({ pct: Progress.goalPct(), color: "var(--coral)", value: `${Progress.goalPct()}%`, sub: "objetivo" })}
-          <span class="lbl">Diciembre</span>
-        </div>
+      <div class="ledger">
+        <div><span class="k">PESO</span><span class="v">${cur.toFixed(1).replace(".", ",")}</span><span class="d">meta ${p.targetWeight} kg</span></div>
+        <div><span class="k">DOMINADAS</span><span class="v">${Pullup.bestReps()}<small>/${CONFIG.goal.pullupTarget}</small></span><span class="d">estrictas</span></div>
+        <div><span class="k">OBJETIVO</span><span class="v">${Progress.goalPct()}%</span><span class="d">al ${Dates.fmt(p.targetDateISO)}</span></div>
       </div>
       <div class="row mt20" style="justify-content:center; gap:8px; flex-wrap:wrap">
-        <span class="pill ${trend !== null && trend < 0 ? "up" : "flat"}">${trend === null ? "⚖️ Registrá tu peso" : (trend <= 0 ? "▼" : "▲") + " " + Math.abs(trend).toFixed(1) + " kg esta semana"}</span>
-        <span class="pill up">🔥 ${streak} ${streak === 1 ? "entreno" : "entrenos"} seguidos</span>
-        <span class="pill ${coke > 0 ? "up" : "flat"}">🚫🥤 ${coke} ${coke === 1 ? "día" : "días"} sin Coca-Cola</span>
+        <span class="pill ${trend !== null && trend < 0 ? "up" : "flat"}">${trend === null ? "Registrá tu peso" : (trend <= 0 ? "▼" : "▲") + " " + Math.abs(trend).toFixed(1) + " kg esta semana"}</span>
+        <span class="pill up">${streak} ${streak === 1 ? "entreno" : "entrenos"} seguidos</span>
+        <span class="pill ${coke > 0 ? "up" : "flat"}">${coke} ${coke === 1 ? "día" : "días"} sin Coca-Cola</span>
       </div>
     </div>
 
@@ -1630,7 +1726,7 @@ Screens.hoy = function (root) {
         </div>`).join("")}
     </div>
 
-    <button class="btn ghost" data-logweight>⚖️ Registrar peso de hoy</button>
+    <button class="btn ghost" data-logweight>Registrar peso de hoy</button>
   </div>`;
 
   root.querySelectorAll("[data-daily]").forEach(el => {
@@ -1653,7 +1749,7 @@ Screens.hoy = function (root) {
   root.querySelector("[data-ai]").onclick = () => Sheets.aiCoach();
   root.querySelector("[data-settings]").onclick = () => Sheets.settings();
   const sr = root.querySelector("[data-startreturn]");
-  if (sr) sr.onclick = () => { Plan.setStart(Dates.todayKey()); Router.render(); UI.toast("Arrancó la vuelta 💪"); };
+  if (sr) sr.onclick = () => { Plan.setStart(Dates.todayKey()); Router.render(); UI.toast("Arrancó la vuelta "); };
 };
 
 /* ------------------------------- ENTRENO --------------------------------- */
@@ -1710,7 +1806,7 @@ Subviews.sesion = function (root) {
       </div>`}
     ${hidden ? `
       <div class="card center mt8">
-        <p style="font-size:32px">🌿</p>
+        <p style="font-size:32px"></p>
         <p class="mt8" style="font-weight:650">${cardio ? "Hoy toca caminar" : "Hoy toca recuperar"}</p>
         <p class="dimtext mt8">${cardio ? "Caminata de 5 km a paso firme. Sin pesas." : "Caminata, movilidad y elongación. El músculo crece cuando descansás."} Igual podés registrar una sesión extra si querés.</p>
         <button class="btn ghost mt14" data-force>Registrar sesión de todos modos</button>
@@ -1759,7 +1855,7 @@ Subviews.sesion = function (root) {
     </div>`;
 
   const sr = root.querySelector("[data-startreturn]");
-  if (sr) sr.onclick = () => { Plan.setStart(Dates.todayKey()); Router.render(); UI.toast("Arrancó la vuelta 💪"); };
+  if (sr) sr.onclick = () => { Plan.setStart(Dates.todayKey()); Router.render(); UI.toast("Arrancó la vuelta "); };
   root.querySelector("#pick").onchange = e => {
     Subviews._pick = e.target.value || null; Subviews._pickDay = today;
     Subviews.sesion(root);
@@ -1786,7 +1882,7 @@ Subviews.dominadas = function (root) {
   root.innerHTML = `
     <div class="card center">
       <div style="display:flex; justify-content:center">
-        ${UI.ring({ pct: (best/target)*100, size: 150, stroke: 11, color: "var(--violet)", value: `${best}`, sub: `objetivo ${target} reps` })}
+        <div class="metric xl"><span class="n">${best}</span><span class="u">/ ${target} reps</span></div>
       </div>
       <p class="dimtext mt14">Mejor serie de dominadas estrictas (sin asistencia)</p>
     </div>
@@ -1842,9 +1938,9 @@ Screens.comidas = function (root) {
   const today = Dates.todayKey();
   const day = Store.s.meals[today] || {};
   const sections = [
-    { id: "desayuno", name: "Desayuno", icon: "☀️" },
-    { id: "comida",   name: "Comida",   icon: "🍽️" },
-    { id: "cena",     name: "Cena",     icon: "🌙" },
+    { id: "desayuno", name: "Desayuno", icon: "" },
+    { id: "comida",   name: "Comida",   icon: "" },
+    { id: "cena",     name: "Cena",     icon: "" },
   ];
   const totalDone = sections.reduce((s, sec) => s + (day[sec.id]?.length || 0), 0);
 
@@ -1921,7 +2017,7 @@ Screens.habitos._habitRow = function (h, day) {
       <div class="ico">${h.icon}</div>
       <div class="body">
         <div class="name">${h.name}</div>
-        <div class="meta">${h.meta}${streak > 0 ? ` · <span style="color:${h.kind==="avoid" ? "var(--coral)" : "var(--mint)"}">🔥 ${streak} ${streak===1?"día":"días"}${h.kind==="avoid" ? " sin" : ""}</span>` : ""}</div>
+        <div class="meta">${h.meta}${streak > 0 ? ` · <span style="color:${h.kind==="avoid" ? "var(--coral)" : "var(--mint)"}">${streak} ${streak===1?"día":"días"}${h.kind==="avoid" ? " sin" : ""}</span>` : ""}</div>
       </div>
       <div class="end"><div class="check ${on ? (h.kind === "avoid" ? "on bad" : "on") : ""}">${UI.checkSVG}</div></div>
     </div>`;
@@ -1966,7 +2062,7 @@ Subviews.peso = function (root) {
           { color: "var(--mint)", goal: p.targetWeight, fmt: v => v.toFixed(0) }
         )}
       </div>
-      <button class="btn mint mt14" data-add>⚖️ Registrar peso</button>
+      <button class="btn mint mt14" data-add>Registrar peso</button>
     </div>
     ${w.length ? `
     <h2>Registros</h2>
@@ -1998,7 +2094,7 @@ Subviews.medidas = function (root, selected) {
         ${CONFIG.measures.map(m => `<button data-m="${m.id}" class="${sel===m.id?"active":""}" style="font-size:11.5px; padding:8px 2px">${m.name}</button>`).join("")}
       </div>
       ${UI.lineChart(series.slice(-15), { color: "var(--coral)", fmt: v => v.toFixed(0) })}
-      <button class="btn ghost mt14" data-add>📏 Registrar medidas</button>
+      <button class="btn ghost mt14" data-add>Registrar medidas</button>
     </div>
     ${last ? `
     <h2>Última medición · ${Dates.fmt(last.date)}</h2>
@@ -2019,7 +2115,7 @@ Subviews.fotos = function (root) {
     <div class="card center">
       <p class="dimtext">Sacate una foto por semana, misma luz y misma pose.<br>La evolución que la balanza no muestra, la muestra el espejo.</p>
       <label class="btn ghost mt14" style="display:flex">
-        📸 Agregar foto
+        Agregar foto
         <input type="file" accept="image/*" capture="environment" hidden data-photo>
       </label>
     </div>
@@ -2063,7 +2159,7 @@ Subviews.fotos = function (root) {
       cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
       Store.s.photos.push({ date: Dates.todayKey(), dataUrl: cv.toDataURL("image/jpeg", 0.72) });
       Store.commit(); Router.render();
-      UI.toast("Foto guardada 📸");
+      UI.toast("Foto guardada ");
     };
     img.src = URL.createObjectURL(file);
   };
@@ -2084,7 +2180,7 @@ Subviews.stats = function (root) {
     { lbl: "Repeticiones", v: Stats.totalReps(), u: "" },
     { lbl: "Tiempo colgado", v: Math.round(Stats.totalHangSecs() / 60 * 10) / 10, u: "min" },
     { lbl: "Peso perdido", v: Progress.lostKg().toFixed(1), u: "kg" },
-    { lbl: "Racha actual", v: Workouts.trainingStreak(), u: "🔥" },
+    { lbl: "Racha actual", v: Workouts.trainingStreak(), u: "" },
     { lbl: "Días entrenados", v: Workouts.daysTrained(), u: "" },
     { lbl: "Dominada estimada", v: pred.ready && !pred.stalled ? Dates.fmt(pred.dateKey) : "—", u: "" },
   ];
@@ -2133,7 +2229,7 @@ const Sheets = {
           Store.s.weights = Store.s.weights.filter(w => w.date !== today);
           Store.s.weights.push({ date: today, kg: +kg.toFixed(1) });
           Store.commit(); UI.closeSheet(); Router.render();
-          UI.toast(kg <= Store.s.profile.targetWeight ? "🎯 ¡Objetivo alcanzado!" : "Peso registrado ⚖️");
+          UI.toast(kg <= Store.s.profile.targetWeight ? "¡Objetivo alcanzado!" : "Peso registrado ");
         };
       });
   },
@@ -2160,7 +2256,7 @@ const Sheets = {
           Store.s.measurements = Store.s.measurements.filter(m => m.date !== entry.date);
           Store.s.measurements.push(entry);
           Store.commit(); UI.closeSheet(); Router.render();
-          UI.toast("Medidas guardadas 📏");
+          UI.toast("Medidas guardadas ");
         };
       });
   },
@@ -2218,7 +2314,7 @@ const Sheets = {
             <div class="setrow ${ex.type === "secs" ? "chrono" : "timed"}">
               <span class="idx">${i + 1}</span>
               ${UI.stepper("v" + i, s.v, { min: 0, max: 999, label: `Serie ${i+1}` })}
-              ${ex.type === "secs" ? `<button type="button" class="tbtn" data-timer="${i}" aria-label="Cronometrar serie ${i+1}">⏱</button>` : ""}
+              ${ex.type === "secs" ? `<button type="button" class="tbtn" data-timer="${i}" aria-label="Cronometrar serie ${i+1}"></button>` : ""}
             </div>`).join("")}
         </div>
         <div class="row" style="gap:10px; margin: 6px 0 16px">
@@ -2233,21 +2329,21 @@ const Sheets = {
         ${w?.exercises?.[exId] ? `<button class="btn danger mt8" id="exclear">Quitar de la sesión</button>` : ""}`;
 
       UI.bindSteppers(sheet);
-      // Cronómetro (solo ejercicios por tiempo): ⏱ arranca; ■ frena y guarda los segundos
+      // Cronómetro (solo ejercicios por tiempo): arranca; ■ frena y guarda los segundos
       sheet.querySelectorAll("[data-timer]").forEach(btn => {
         btn.onclick = () => {
           const i = +btn.dataset.timer;
           const inp = sheet.querySelector(`[data-stepper="v${i}"] input`);
           if (runIdx === i) {
             clearInterval(tick); tick = null; runIdx = -1;
-            btn.classList.remove("run"); btn.textContent = "⏱";
+            btn.classList.remove("run"); btn.textContent = "";
             sets[i].v = Math.max(0, +inp.value || 0);
             return;
           }
           if (tick) {
             clearInterval(tick);
             const prevBtn = sheet.querySelector(".tbtn.run");
-            if (prevBtn) { prevBtn.classList.remove("run"); prevBtn.textContent = "⏱"; }
+            if (prevBtn) { prevBtn.classList.remove("run"); prevBtn.textContent = ""; }
           }
           runIdx = i; t0 = Date.now();
           btn.classList.add("run"); btn.textContent = "■";
@@ -2275,12 +2371,12 @@ const Sheets = {
         w.exercises[exId] = { sets: clean, obs: document.getElementById("obs").value.trim() };
         const now = Workouts.metric(w, ex);
         Store.commit(); UI.closeSheet(); Router.render();
-        if (before && now > before) UI.toast(`▲ +${Math.round(now - before)} vs. la sesión anterior 💪`);
+        if (before && now > before) UI.toast(`▲ +${Math.round(now - before)} vs. la sesión anterior `);
         else UI.toast("Ejercicio guardado ✓");
         if (exId === "dominada") {
           const bestNow = Math.max(...clean.map(s => s.v));
           const bestPrev = Math.max(CONFIG.baseline.pullupReps, ...Pullup.repsHistory().filter(h => h.date !== today).map(h => h.reps));
-          if (bestNow > bestPrev) setTimeout(() => UI.toast(`🏆 Nuevo récord de dominadas: ${bestNow}`), 2400);
+          if (bestNow > bestPrev) setTimeout(() => UI.toast(`Nuevo récord de dominadas: ${bestNow}`), 2400);
         }
       };
       const clear = sheet.querySelector("#exclear");
@@ -2298,7 +2394,7 @@ const Sheets = {
   aiCoach(force = false) {
     if (!AI.hasKey()) {
       UI.openSheet(`
-        <h3>🧠 Coach IA</h3>
+        <h3>Coach IA</h3>
         <p class="dimtext small" style="margin-bottom:14px">
           Lee tu progreso real (colgado, peso, sesiones, hábitos) y te devuelve una lectura honesta más el ajuste
           concreto de la próxima semana. Usa tu API key gratuita de Google AI Studio
@@ -2317,7 +2413,7 @@ const Sheets = {
       return;
     }
     UI.openSheet(`
-      <h3>🧠 Coach IA</h3>
+      <h3>Coach IA</h3>
       <div id="aiout" class="ai-out"><p class="dimtext">Analizando tu progreso…</p></div>
       <button class="btn ghost mt14" id="aire">↻ Actualizar análisis</button>`,
       async sheet => {
@@ -2328,7 +2424,7 @@ const Sheets = {
           if (out) out.innerHTML = AI.md(text);
         } catch (e) {
           const out = sheet.querySelector("#aiout");
-          if (out) out.innerHTML = `<p class="dimtext">No pude obtener el análisis: ${UI.esc(e.message)}.<br>Revisá la API key en Ajustes ⚙︎ o probá de nuevo en un rato.</p>`;
+          if (out) out.innerHTML = `<p class="dimtext">No pude obtener el análisis: ${UI.esc(e.message)}.<br>Revisá la API key en Ajustes o probá de nuevo en un rato.</p>`;
         }
       });
   },
@@ -2348,6 +2444,11 @@ const Sheets = {
       <div class="field"><label>Inicio de la vuelta (fase 1)</label><input type="date" id="rd" value="${p.returnDate || ""}"></div>
       <p class="dimtext small" style="margin:-6px 0 8px">Las fases se calculan desde esta fecha: 2 semanas de reentrada, 2 de reconstrucción y después progresión. Vacío = todavía no empezó.</p>
       <button class="btn ghost" id="rdsave">Guardar fecha</button>
+      <div class="field mt20"><label>Días de entreno</label>
+        <div class="daypick">${[1,2,3,4,5,6,0].map(d => `<label><input type="checkbox" value="${d}" ${(p.trainDays || []).includes(d) ? "checked" : ""}><span>${["D","L","M","X","J","V","S"][d]}</span></label>`).join("")}</div>
+      </div>
+      <p class="dimtext small" style="margin:-6px 0 8px">Las sesiones de cada fase se reparten en orden sobre los días que marques. Sin marcar = calendario del plan.</p>
+      <button class="btn ghost" id="tdsave">Guardar días</button>
       <h2 style="margin-left:0">Coach IA (Gemini)</h2>
       <div class="field"><label>API key de Google AI Studio</label>
         <input type="password" id="gk" value="${UI.esc(c.geminiKey || "")}" placeholder="AIza…"></div>
@@ -2355,13 +2456,13 @@ const Sheets = {
       <h2 style="margin-left:0">Cuenta y nube (Supabase)</h2>
       ${Auth.user ? `
         <div class="item" style="border:none; padding-top:4px">
-          <div class="ico">👤</div>
+          <div class="ico"></div>
           <div class="body"><div class="name">${UI.esc(Auth.user.email)}</div>
           <div class="meta">Tus datos se sincronizan solos al cambiar algo</div></div>
         </div>
         <div class="grid2">
-          <button class="btn ghost" id="push">☁️ Sincronizar ahora</button>
-          <button class="btn ghost" id="pull">📥 Traer de la nube</button>
+          <button class="btn ghost" id="push">Sincronizar ahora</button>
+          <button class="btn ghost" id="pull">Traer de la nube</button>
         </div>
         <button class="btn ghost mt8" id="logout">Cerrar sesión</button>
       ` : `
@@ -2383,11 +2484,11 @@ const Sheets = {
       <h2 style="margin-left:0">Tus datos</h2>
       <p class="dimtext small" style="margin-bottom:12px">Todo se guarda en este dispositivo. Exportá un respaldo para no perder nada o para migrar en el futuro.</p>
       <div class="grid2">
-        <button class="btn ghost" id="exp">⬇️ Exportar</button>
-        <label class="btn ghost" style="display:flex">⬆️ Importar<input type="file" accept=".json" hidden id="imp"></label>
+        <button class="btn ghost" id="exp">⬇ Exportar</button>
+        <label class="btn ghost" style="display:flex">⬆ Importar<input type="file" accept=".json" hidden id="imp"></label>
       </div>
       <button class="btn danger mt14" id="wipe">Borrar todos los datos</button>
-      ${!Storage.persistent ? `<p class="dimtext small center mt14">⚠️ Este entorno no permite guardar de forma permanente. Abrí el archivo en tu navegador o subilo a un hosting para que los datos persistan.</p>` : ""}`,
+      ${!Storage.persistent ? `<p class="dimtext small center mt14">Este entorno no permite guardar de forma permanente. Abrí el archivo en tu navegador o subilo a un hosting para que los datos persistan.</p>` : ""}`,
       sheet => {
         sheet.querySelector("#psave").onclick = () => {
           const sw = parseFloat(sheet.querySelector("#sw").value);
@@ -2403,6 +2504,12 @@ const Sheets = {
           UI.toast("Ajustes guardados");
         };
 
+        sheet.querySelector("#tdsave").onclick = () => {
+          const ds = [...sheet.querySelectorAll(".daypick input:checked")].map(i => Number(i.value));
+          p.trainDays = ds.length ? ds : null;
+          Store.commit(); UI.closeSheet(); Router.render(); UI.toast("Días actualizados");
+        };
+
         sheet.querySelector("#rdsave").onclick = () => {
           Plan.setStart(sheet.querySelector("#rd").value || null);
           UI.closeSheet(); Router.render(); UI.toast("Plan actualizado");
@@ -2411,7 +2518,7 @@ const Sheets = {
         if (Auth.user) {
           sheet.querySelector("#push").onclick = async () => {
             UI.toast("Sincronizando…");
-            try { await Sync.push(); UI.toast("☁️ Sincronizado"); }
+            try { await Sync.push(); UI.toast("Sincronizado"); }
             catch (e) { UI.toast("No se pudo: " + e.message); }
           };
           sheet.querySelector("#pull").onclick = async () => {
@@ -2420,7 +2527,7 @@ const Sheets = {
               if (!confirm(`Se va a reemplazar lo de este dispositivo por la nube (${new Date(row.updated_at).toLocaleString("es")}). ¿Seguimos?`)) return;
               Store.replace(row.data);
               UI.closeSheet(); Router.render();
-              UI.toast("📥 Datos restaurados");
+              UI.toast("Datos restaurados");
             } catch (e) { UI.toast("No se pudo: " + e.message); }
           };
           sheet.querySelector("#logout").onclick = () => { UI.closeSheet(); Session.signOut(); };
@@ -2442,7 +2549,7 @@ const Sheets = {
                 await Auth.signIn(email, pw);
               }
               UI.closeSheet();
-              UI.toast("Sesión iniciada 👤");
+              UI.toast("Sesión iniciada ");
               await Session.afterLogin();
             } catch (e) { UI.toast("No se pudo: " + e.message); }
           };
@@ -2537,7 +2644,7 @@ const Router = (() => {
       if ((row.data?.updatedAt || "") > (Store.s.updatedAt || "")) {
         Store.replace(row.data);
         Router.render();
-        UI.toast("☁️ Sincronizado desde la nube");
+        UI.toast("Sincronizado desde la nube");
       }
     }).catch(() => {});
   }
