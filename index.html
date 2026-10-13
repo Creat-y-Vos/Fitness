@@ -783,6 +783,11 @@ const Plan = {
     const s = CONFIG.plan.sessions[sid];
     return { id: sid, name: s.name, sub: s.sub, ex: (ph.id === 1 && s.exP1) ? s.exP1 : s.ex, phase: ph };
   },
+  sessionById(id, key) {
+    const s = CONFIG.plan.sessions[id]; if (!s) return null;
+    const ph = this.phase(key);
+    return { id, name: s.name, sub: s.sub, ex: (ph.id === 1 && s.exP1) ? s.exP1 : s.ex, phase: ph };
+  },
   isCardio(key) { const ph = this.phase(key); return !!(ph.cardio && ph.cardio.includes(Dates.weekday(key))); },
   setsFor(ex, key) { const ph = this.phase(key); return ph.setsCap ? Math.min(ph.setsCap, ex.sets) : ex.sets; },
   suggestKg(ex, key) {
@@ -1666,13 +1671,14 @@ Subviews.sesion = function (root) {
   const today = Dates.todayKey();
   const w = Workouts.byDate(today);
   const isTraining = Dates.isTrainingDay(today);
-  const sess = Plan.sessionFor(isTraining ? today : Dates.nextTrainingDay(Dates.addDays(today, 1)));
+  const picked = Subviews._pickDay === today && Subviews._pick ? Plan.sessionById(Subviews._pick, today) : null;
+  const sess = picked || Plan.sessionFor(isTraining ? today : Dates.nextTrainingDay(Dates.addDays(today, 1)));
   const ph = Plan.phase(today);
   const ids = sess ? [...sess.ex] : [];
   Object.keys(w?.exercises || {}).forEach(id => { if (!ids.includes(id) && Ex.get(id)) ids.push(id); });
   const comparisons = w ? Workouts.compare(w) : null;
   const cardio = !isTraining && Plan.isCardio(today);
-  const hidden = !isTraining && !w;
+  const hidden = !isTraining && !w && !picked;
 
   root.innerHTML = `
     ${!Plan.started() ? `
@@ -1692,7 +1698,9 @@ Subviews.sesion = function (root) {
         <p class="dimtext mt8">${cardio ? "Caminata de 5 km a paso firme. Sin pesas." : "Caminata, movilidad y elongación. El músculo crece cuando descansás."} Igual podés registrar una sesión extra si querés.</p>
         <button class="btn ghost mt14" data-force>Registrar sesión de todos modos</button>
       </div>` : ""}
-    ${sess ? `<h2>${sess.name}${isTraining ? "" : " · próxima"}</h2>
+    <div class="field" style="margin:4px 0 8px"><label>¿Qué sesión hiciste / hacés hoy?</label>
+      <select id="pick"><option value="">Según el plan</option>${Object.entries(CONFIG.plan.sessions).map(([id, x]) => `<option value="${id}" ${picked && picked.id === id ? "selected" : ""}>${UI.esc(x.name)}</option>`).join("")}</select></div>
+    ${sess ? `<h2>${sess.name}${isTraining || picked ? "" : " · próxima"}</h2>
       <p class="dimtext small" style="margin:-4px 0 12px">${sess.sub || ""}</p>` : ""}
     <div id="exlist" ${hidden ? 'style="display:none"' : ""}>
       ${ids.map(id => {
@@ -1735,6 +1743,10 @@ Subviews.sesion = function (root) {
 
   const sr = root.querySelector("[data-startreturn]");
   if (sr) sr.onclick = () => { Plan.setStart(Dates.todayKey()); Router.render(); UI.toast("Arrancó la vuelta 💪"); };
+  root.querySelector("#pick").onchange = e => {
+    Subviews._pick = e.target.value || null; Subviews._pickDay = today;
+    Subviews.sesion(root);
+  };
   const force = root.querySelector("[data-force]");
   if (force) force.onclick = () => {
     root.querySelector("#exlist").style.display = "";
