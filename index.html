@@ -1397,6 +1397,15 @@ const Sync = {
     if (!rows.length) throw new Error("no hay respaldo en la nube todavía");
     return rows[0];
   },
+
+  // Última nota del coach (la escribe la tarea semanal; la app solo la lee)
+  async latestNote() {
+    if (!Auth.user) return null;
+    const url = Conn.get().supabaseUrl.trim().replace(/\/+$/, "") + "/rest/v1/coach_notes?select=week_start,content,created_at&order=created_at.desc&limit=1";
+    const res = await fetch(url, { headers: await this._headers() });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    return (await res.json())[0] || null;
+  },
 };
 
 /* ---- Gate: la app no se muestra sin sesión ---- */
@@ -1462,6 +1471,7 @@ const Session = {
   },
 
   signOut() {
+    if (typeof Subviews !== "undefined") Subviews._note = null;
     Auth.signOut();
     Storage.setNamespace(null);
     Store.reload();
@@ -1669,6 +1679,7 @@ Screens.hoy = function (root) {
     </div>
 
     <div class="coach">${Coach.today()}</div>
+    <div id="coachnote"></div>
     <button class="btn ghost small mt8" data-ai>Análisis del coach con IA</button>
 
     ${!Plan.started() ? `
@@ -1748,6 +1759,15 @@ Screens.hoy = function (root) {
     Router.go(tab, sub);
   });
   root.querySelector("[data-logweight]").onclick = () => Sheets.logWeight();
+  // Tarjeta "Tu coach": última nota semanal guardada en la base
+  const showNote = n => {
+    const box = root.querySelector("#coachnote");
+    if (!box || !n) return;
+    const paras = String(n.content).split(/\n{2,}/).map(t => `<p class="mt8" style="font-size:14.5px;line-height:1.5">${UI.esc(t).replace(/\n/g, "<br>")}</p>`).join("");
+    box.innerHTML = `<div class="card mt8" style="border-color: var(--violet)"><div class="eyebrow" style="color:var(--violet)">Tu coach · semana del ${Dates.fmt(n.week_start)}</div>${paras}</div>`;
+  };
+  if (Subviews._note) showNote(Subviews._note);
+  if (Auth.user) Sync.latestNote().then(n => { Subviews._note = n; showNote(n); }).catch(() => {});
   root.querySelector("[data-ai]").onclick = () => Sheets.aiCoach();
   root.querySelector("[data-settings]").onclick = () => Sheets.settings();
   const sr = root.querySelector("[data-startreturn]");
