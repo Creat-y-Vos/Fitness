@@ -821,9 +821,18 @@ const Store = (() => {
 
 /* ---- Cfg: configuración por usuario (plan, ejercicios, objetivo, hábitos).
    Si el estado del usuario trae `config`, manda; si no, valen los defaults de CONFIG. ---- */
+// Config que el coach guarda en el servidor para cada cuenta (tabla user_config, solo lectura).
+// Se cachea en el dispositivo para que funcione sin conexión.
+const CfgStore = {
+  data: null,
+  key: uid => "vform.cfg." + uid,
+  load(uid) { try { this.data = JSON.parse(localStorage.getItem(this.key(uid))); } catch (_) { this.data = null; } },
+  set(c, uid) { this.data = c; try { c ? localStorage.setItem(this.key(uid), JSON.stringify(c)) : localStorage.removeItem(this.key(uid)); } catch (_) {} },
+  clear() { this.data = null; },
+};
 const Cfg = new Proxy({}, {
   get(_, k) {
-    const o = (typeof Store !== "undefined" && Store.s && Store.s.config) || null;
+    const o = CfgStore.data || (typeof Store !== "undefined" && Store.s && Store.s.config) || null;
     if (k === "pullups") return (Cfg.goal.pullupTarget || 0) > 0;
     if (k === "hasCoke") return Cfg.habits.some(h => h.id === "coca");
     if (k === "goal") return { ...CONFIG.goal, ...((o && o.goal) || {}) };
@@ -1406,6 +1415,18 @@ const Sync = {
     return rows[0];
   },
 
+  // Plan y objetivo de esta cuenta (lo escribe el coach; la app solo lee). Devuelve true si cambió.
+  async loadConfig() {
+    if (!Auth.user) return false;
+    const url = Conn.get().supabaseUrl.trim().replace(/\/+$/, "") + "/rest/v1/user_config?select=config&limit=1";
+    const res = await fetch(url, { headers: await this._headers() });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const c = ((await res.json())[0] || {}).config || null;
+    const changed = JSON.stringify(c) !== JSON.stringify(CfgStore.data);
+    CfgStore.set(c, Auth.user.id);
+    return changed;
+  },
+
   // Última nota del coach (la escribe la tarea semanal; la app solo la lee)
   async latestNote() {
     if (!Auth.user) return null;
@@ -1463,6 +1484,8 @@ const Session = {
   async afterLogin() {
     const guest = Storage.load(); // todavía estamos en el espacio invitado
     Storage.setNamespace(Auth.user.id);
+    CfgStore.load(Auth.user.id);
+    try { await Sync.loadConfig(); } catch (_) {}
     Store.reload();
     const isEmpty = st => !st.workouts.length && !st.weights.length && !Object.keys(st.habits).length;
     try {
@@ -1480,6 +1503,7 @@ const Session = {
 
   signOut() {
     if (typeof Subviews !== "undefined") Subviews._note = null;
+    CfgStore.clear();
     Auth.signOut();
     Storage.setNamespace(null);
     Store.reload();
@@ -2659,6 +2683,12 @@ const Router = (() => {
   }
   if (!Storage.persistent) {
     setTimeout(() => UI.toast("Vista previa: los datos no se guardan acá"), 800);
+  }
+
+  // Plan de la cuenta: primero el cacheado, después se actualiza desde el servidor
+  if (Auth.user) {
+    CfgStore.load(Auth.user.id);
+    if (Sync.configured()) Sync.loadConfig().then(changed => { if (changed) Router.render(); }).catch(() => {});
   }
 
   // Multi-dispositivo: cada cambio se sube solo (debounce) si hay sesión,
