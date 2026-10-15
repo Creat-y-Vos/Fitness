@@ -1445,6 +1445,83 @@ const Sync = {
   },
 };
 
+/* ---- Fotos de progreso: Storage privado + tabla progress_photos (RLS por usuario) ---- */
+const Photos = {
+  items: null,   // [{id, date, path, url}] ordenadas de más nueva a más vieja
+  _root() { return Conn.get().supabaseUrl.trim().replace(/\/+$/, ""); },
+  async _h(extra) { return { ...(await Sync._headers()), ...(extra || {}) }; },
+
+  async load() {
+    if (!Auth.user) { this.items = []; return this.items; }
+    const res = await fetch(this._root() + "/rest/v1/progress_photos?select=id,taken_on,path&order=taken_on.desc,created_at.desc", { headers: await this._h() });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const rows = await res.json();
+    let urls = {};
+    if (rows.length) {
+      const sres = await fetch(this._root() + "/storage/v1/object/sign/progress-photos", {
+        method: "POST", headers: await this._h(), body: JSON.stringify({ expiresIn: 3600, paths: rows.map(r => r.path) }),
+      });
+      if (!sres.ok) throw new Error("HTTP " + sres.status);
+      (await sres.json()).forEach(o => { if (o.signedURL) urls[o.path] = this._root() + "/storage/v1" + o.signedURL; });
+    }
+    this.items = rows.map(r => ({ id: r.id, date: r.taken_on, path: r.path, url: urls[r.path] || "" }));
+    return this.items;
+  },
+
+  async upload(blob, date) {
+    const path = `${Auth.user.id}/${Date.now()}-${Math.random().toString(36).slice(2, 7)}.jpg`;
+    const up = await fetch(`${this._root()}/storage/v1/object/progress-photos/${path}`, {
+      method: "POST", headers: await this._h({ "Content-Type": "image/jpeg" }), body: blob,
+    });
+    if (!up.ok) throw new Error("no se pudo subir (HTTP " + up.status + ")");
+    const ins = await fetch(this._root() + "/rest/v1/progress_photos", {
+      method: "POST", headers: await this._h(), body: JSON.stringify([{ taken_on: date, path }]),
+    });
+    if (!ins.ok) {
+      await fetch(`${this._root()}/storage/v1/object/progress-photos/${path}`, { method: "DELETE", headers: await this._h() }).catch(() => {});
+      throw new Error("no se pudo registrar (HTTP " + ins.status + ")");
+    }
+  },
+
+  async remove(item) {
+    const r1 = await fetch(`${this._root()}/storage/v1/object/progress-photos/${item.path}`, { method: "DELETE", headers: await this._h() });
+    if (!r1.ok) throw new Error("HTTP " + r1.status);
+    const r2 = await fetch(this._root() + "/rest/v1/progress_photos?id=eq." + item.id, { method: "DELETE", headers: await this._h() });
+    if (!r2.ok) throw new Error("HTTP " + r2.status);
+  },
+
+  // Fotos viejas que vivían dentro del estado (base64) → a Storage, y se sacan del estado
+  async migrateLegacy() {
+    const legacy = (Store.s.photos || []).filter(p => p.dataUrl);
+    if (!legacy.length || !Auth.user) return 0;
+    let done = 0;
+    for (const p of legacy) {
+      const blob = await (await fetch(p.dataUrl)).blob();
+      await this.upload(blob, p.date);
+      done++;
+    }
+    Store.s.photos = [];
+    Store.commit();
+    return done;
+  },
+
+  _compress(file) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 1280;
+        const k = Math.min(1, MAX / Math.max(img.width, img.height));
+        const cv = document.createElement("canvas");
+        cv.width = Math.round(img.width * k); cv.height = Math.round(img.height * k);
+        cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+        cv.toBlob(b => b ? resolve(b) : reject(new Error("imagen inválida")), "image/jpeg", 0.8);
+      };
+      img.onerror = () => reject(new Error("imagen inválida"));
+      img.src = URL.createObjectURL(file);
+    });
+  },
+};
+
 /* ---- Gate: la app no se muestra sin sesión ---- */
 const Gate = {
   locked() { return Sync.configured() && !Auth.user; },
@@ -1511,6 +1588,7 @@ const Session = {
 
   signOut() {
     if (typeof Subviews !== "undefined") Subviews._note = null;
+    Photos.items = null;
     CfgStore.clear();
     Auth.signOut();
     Storage.setNamespace(null);
@@ -2171,67 +2249,76 @@ Subviews.medidas = function (root, selected) {
   root.querySelector("[data-add]").onclick = () => Sheets.logMeasures();
 };
 
-Subviews.fotos = function (root) {
-  const photos = [...Store.s.photos].sort((a,b) => a.date < b.date ? 1 : -1);
-  root.innerHTML = `
-    <div class="card center">
-      <p class="dimtext">Sacate una foto por semana, misma luz y misma pose.<br>La evolución que la balanza no muestra, la muestra el espejo.</p>
-      <label class="btn ghost mt14" style="display:flex">
-        Agregar foto
-        <input type="file" accept="image/*" capture="environment" hidden data-photo>
-      </label>
-    </div>
-    ${photos.length >= 2 ? `
-    <h2>Antes / después</h2>
-    <div class="card">
-      <div class="compare" style="--cut:50%">
-        <img src="${photos[photos.length-1].dataUrl}" alt="Foto inicial" class="top">
-        <img src="${photos[0].dataUrl}" alt="Foto más reciente">
-        <div class="bar"></div>
-        <span class="cap capA">ANTES · ${Dates.fmt(photos[photos.length-1].date)}</span>
-        <span class="cap capB">AHORA · ${Dates.fmt(photos[0].date)}</span>
+Subviews.fotos = async function (root) {
+  const draw = (photos, err) => {
+    root.innerHTML = `
+      <div class="card center">
+        <p class="dimtext">Sacate una foto por semana, misma luz y misma pose.<br>La evolución que la balanza no muestra, la muestra el espejo.</p>
+        <label class="btn ghost mt14" style="display:flex">
+          Agregar foto
+          <input type="file" accept="image/*" hidden data-photo>
+        </label>
+        <p class="dimtext small mt14">Se guardan en tu cuenta, en un espacio privado: solo vos las ves.</p>
       </div>
-      <input type="range" class="scrub" min="0" max="100" value="50" data-scrub aria-label="Comparar fotos">
-    </div>` : ""}
-    ${photos.length ? `
-    <div class="photo-grid mt14">
-      ${photos.map((ph, i) => `
-        <figure data-ph="${i}">
-          <img src="${ph.dataUrl}" alt="Foto de progreso ${Dates.fmt(ph.date)}" loading="lazy">
-          <figcaption>${Dates.fmt(ph.date)}</figcaption>
-        </figure>`).join("")}
-    </div>
-    <p class="dimtext small center mt14">Tocá una foto para eliminarla</p>` : ""}`;
+      ${err ? `<p class="dimtext small center mt14">${UI.esc(err)}</p>` : ""}
+      ${photos.length >= 2 ? `
+      <h2>Antes / después</h2>
+      <div class="card">
+        <div class="compare" style="--cut:50%">
+          <img src="${photos[photos.length-1].url}" alt="Foto inicial" class="top">
+          <img src="${photos[0].url}" alt="Foto más reciente">
+          <div class="bar"></div>
+          <span class="cap capA">ANTES · ${Dates.fmt(photos[photos.length-1].date)}</span>
+          <span class="cap capB">AHORA · ${Dates.fmt(photos[0].date)}</span>
+        </div>
+        <input type="range" class="scrub" min="0" max="100" value="50" data-scrub aria-label="Comparar fotos">
+      </div>` : ""}
+      ${photos.length ? `
+      <div class="photo-grid mt14">
+        ${photos.map((ph, i) => `
+          <figure data-ph="${i}">
+            <img src="${ph.url}" alt="Foto de progreso ${Dates.fmt(ph.date)}" loading="lazy">
+            <figcaption>${Dates.fmt(ph.date)}</figcaption>
+          </figure>`).join("")}
+      </div>
+      <p class="dimtext small center mt14">Tocá una foto para eliminarla</p>` : ""}`;
 
-  const scrub = root.querySelector("[data-scrub]");
-  if (scrub) {
-    const box = root.querySelector(".compare");
-    scrub.oninput = () => box.style.setProperty("--cut", scrub.value + "%");
-  }
-  root.querySelector("[data-photo]").onchange = e => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const img = new Image();
-    img.onload = () => {
-      const MAX = 900;
-      const scale = Math.min(1, MAX / Math.max(img.width, img.height));
-      const cv = document.createElement("canvas");
-      cv.width = Math.round(img.width * scale);
-      cv.height = Math.round(img.height * scale);
-      cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
-      Store.s.photos.push({ date: Dates.todayKey(), dataUrl: cv.toDataURL("image/jpeg", 0.72) });
-      Store.commit(); Router.render();
-      UI.toast("Foto guardada ");
+    const scrub = root.querySelector("[data-scrub]");
+    if (scrub) {
+      const box = root.querySelector(".compare");
+      scrub.oninput = () => box.style.setProperty("--cut", scrub.value + "%");
+    }
+    root.querySelector("[data-photo]").onchange = async e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      try {
+        UI.toast("Subiendo…");
+        await Photos.upload(await Photos._compress(file), Dates.todayKey());
+        await Photos.load();
+        draw(Photos.items);
+        UI.toast("Foto guardada");
+      } catch (ex) { UI.toast("No se pudo guardar: " + ex.message); }
     };
-    img.src = URL.createObjectURL(file);
+    root.querySelectorAll("[data-ph]").forEach(f => f.onclick = async () => {
+      if (!confirm("¿Eliminar esta foto?")) return;
+      try {
+        await Photos.remove(photos[+f.dataset.ph]);
+        await Photos.load();
+        draw(Photos.items);
+      } catch (ex) { UI.toast("No se pudo eliminar: " + ex.message); }
+    });
   };
-  root.querySelectorAll("[data-ph]").forEach(f => f.onclick = () => {
-    if (!confirm("¿Eliminar esta foto?")) return;
-    const sorted = [...Store.s.photos].sort((a,b) => a.date < b.date ? 1 : -1);
-    const target = sorted[+f.dataset.ph];
-    Store.s.photos = Store.s.photos.filter(p => p !== target);
-    Store.commit(); Router.render();
-  });
+
+  if (!Photos.items) root.innerHTML = `<div class="card center"><p class="dimtext">Cargando fotos…</p></div>`;
+  else draw(Photos.items);
+  try {
+    const n = await Photos.migrateLegacy();
+    await Photos.load();
+    if (n) UI.toast(`${n} foto${n > 1 ? "s" : ""} pasada${n > 1 ? "s" : ""} a tu espacio privado`);
+    draw(Photos.items);
+  } catch (ex) {
+    draw(Photos.items || [], "No pude cargar las fotos (" + ex.message + "). ¿Tenés conexión?");
+  }
 };
 
 Subviews.stats = function (root) {
