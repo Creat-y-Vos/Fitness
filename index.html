@@ -792,6 +792,7 @@ const Store = (() => {
   const ensure = st => {
     st.settings = Object.assign({ geminiKey: "", supabaseUrl: "", supabaseKey: "" }, st.settings || {});
     st.aiCache = st.aiCache || {};
+    st.workouts = st.workouts || []; st.weights = st.weights || []; st.measurements = st.measurements || []; st.photos = st.photos || [];
     // Los defaults viejos (80 → 75) no eran los tuyos: si nunca se tocaron, pasan a 98 → 92
     if (st.profile && st.profile.startWeight === 80 && st.profile.targetWeight === 75) {
       st.profile.startWeight = CONFIG.goal.startWeight;
@@ -818,6 +819,8 @@ const Store = (() => {
     replace(next) {
       // Un respaldo viejo sin `config` no debe borrar el plan del usuario
       if (next && !next.config && state.config) next.config = state.config;
+      // Un respaldo que ya no trae entrenos/peso/medidas (viven en tablas) no debe vaciarlos acá
+      if (next && next.recordsInDb) { next.workouts = state.workouts; next.weights = state.weights; next.measurements = state.measurements; }
       state = ensure(next); this.commit();
     },
     // Recarga desde el namespace activo (cambio de usuario) sin pisar updatedAt
@@ -1406,10 +1409,12 @@ const Sync = {
 
   async push() {
     if (!Auth.user) throw new Error("iniciá sesión para sincronizar");
+    let inDb = true;
+    try { await Records.sync(); } catch (e) { inDb = false; console.warn("Records.sync:", e); }
     const res = await fetch(this._url() + "?on_conflict=user_id", {
       method: "POST",
       headers: { ...(await this._headers()), Prefer: "resolution=merge-duplicates" },
-      body: JSON.stringify([{ user_id: Auth.user.id, data: Store.s, updated_at: new Date().toISOString() }]),
+      body: JSON.stringify([{ user_id: Auth.user.id, data: inDb ? Records.stripped(Store.s) : Store.s, updated_at: new Date().toISOString() }]),
     });
     if (!res.ok) throw new Error("HTTP " + res.status);
   },
@@ -1522,6 +1527,138 @@ const Photos = {
   },
 };
 
+/* ---- Records: entrenos, peso y medidas viven en tablas (workouts, body_metrics).
+   El dispositivo guarda una copia para andar sin conexión; la sincronización es por registro
+   (merge de 3 vías contra lo último sincronizado), no un volcado completo. ---- */
+const Records = {
+  _p: null,
+  _key: uid => "vform.sync." + uid,
+  _reg(uid) { try { return JSON.parse(localStorage.getItem(this._key(uid))) || { w: {}, m: {} }; } catch (_) { return { w: {}, m: {} }; } },
+  _saveReg(uid, r) { try { localStorage.setItem(this._key(uid), JSON.stringify(r)); } catch (_) {} },
+  _canon(v) {
+    if (v === undefined) return undefined;
+    const c = x => Array.isArray(x) ? x.map(c)
+      : x && typeof x === "object" ? Object.keys(x).sort().reduce((o, k) => (x[k] === undefined ? o : (o[k] = c(x[k]), o), o), {})
+      : x;
+    return JSON.stringify(c(v));
+  },
+  _h: () => Sync._headers(),
+  _root: () => Conn.get().supabaseUrl.trim().replace(/\/+$/, "") + "/rest/v1/",
+
+  // --- estado local → mapas por clave ---
+  _localW() {
+    const o = {};
+    (Store.s.workouts || []).forEach(w => { o[w.id] = { id: w.id, date: w.date, exercises: w.exercises || {}, ...(w.note ? { note: w.note } : {}) }; });
+    return o;
+  },
+  _localM() {
+    const o = {};
+    (Store.s.weights || []).forEach(x => { (o[x.date] = o[x.date] || {}).kg = Number(x.kg); });
+    (Store.s.measurements || []).forEach(x => { const { date, ...m } = x; (o[date] = o[date] || {}).m = m; });
+    return o;
+  },
+  _applyW(map) { Store.s.workouts = Object.values(map); },
+  _applyM(map) {
+    const ds = Object.keys(map).sort();
+    Store.s.weights = ds.filter(d => map[d].kg != null).map(d => ({ date: d, kg: map[d].kg }));
+    Store.s.measurements = ds.filter(d => map[d].m).map(d => ({ date: d, ...map[d].m }));
+  },
+
+  // --- merge de 3 vías: local / remoto / último sincronizado ---
+  _merge(local, remote, reg, allowMass) {
+    const canon = this._canon;
+    const up = [], delRemote = [], setLocal = {}, delLocal = [], newReg = {};
+    const keys = new Set([...Object.keys(local), ...Object.keys(remote), ...Object.keys(reg)]);
+    for (const k of keys) {
+      const l = canon(local[k]), r = canon(remote[k]), g = reg[k];
+      if (l === r) { if (l !== undefined) newReg[k] = l; continue; }
+      if (l !== undefined && r !== undefined) {
+        if (g === l) { setLocal[k] = remote[k]; newReg[k] = r; }          // cambió solo el remoto
+        else { up.push(k); newReg[k] = l; }                                // cambió lo local (gana local)
+      } else if (l !== undefined) {                                        // está local, no remoto
+        if (g === undefined || g !== l) { up.push(k); newReg[k] = l; }     // nuevo o editado acá
+        else delLocal.push(k);                                             // lo borraron en otro dispositivo
+      } else {                                                             // está remoto, no local
+        if (g === undefined || g !== r) { setLocal[k] = remote[k]; newReg[k] = r; } // nuevo allá o editado allá
+        else delRemote.push(k);                                            // lo borramos acá
+      }
+    }
+    // Freno de seguridad: un borrado masivo automático casi siempre es un error
+    const total = Math.max(1, Object.keys(reg).length);
+    if (!allowMass && (delRemote.length > 5 && delRemote.length > total / 2)) { delRemote.length = 0; for (const k of keys) if (remote[k] !== undefined && local[k] === undefined) newReg[k] = reg[k]; }
+    if (!allowMass && (delLocal.length > 5 && delLocal.length > total / 2)) { delLocal.length = 0; for (const k of keys) if (local[k] !== undefined && remote[k] === undefined) newReg[k] = reg[k]; }
+    return { up, delRemote, setLocal, delLocal, newReg };
+  },
+
+  async _get(table, cols) {
+    const res = await fetch(this._root() + table + "?select=" + cols, { headers: await this._h() });
+    if (!res.ok) throw new Error(table + ": HTTP " + res.status);
+    return res.json();
+  },
+  async _upsert(table, conflict, rows) {
+    if (!rows.length) return;
+    const res = await fetch(this._root() + table + "?on_conflict=" + conflict, {
+      method: "POST", headers: { ...(await this._h()), Prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify(rows),
+    });
+    if (!res.ok) throw new Error(table + ": HTTP " + res.status);
+  },
+  async _delete(table, col, vals) {
+    if (!vals.length) return;
+    const list = vals.map(v => '"' + String(v).replace(/"/g, "") + '"').join(",");
+    const res = await fetch(this._root() + table + "?" + col + "=in.(" + encodeURIComponent(list) + ")", { method: "DELETE", headers: await this._h() });
+    if (!res.ok) throw new Error(table + ": HTTP " + res.status);
+  },
+
+  // Devuelve true si algo cambió en el dispositivo (para re-renderizar)
+  // Las corridas se encolan: nunca hay dos a la vez, y quien llama espera su resultado real
+  sync(opts = {}) {
+    this._p = (this._p || Promise.resolve()).catch(() => {}).then(() => this._run(opts));
+    return this._p;
+  },
+  async _run(opts) {
+    if (!Auth.user || !Sync.configured()) return false;
+    const uid = Auth.user.id;
+    let changed = false;
+    try {
+      const [rw, rm] = await Promise.all([
+        this._get("workouts", "id,workout_date,exercises,note"),
+        this._get("body_metrics", "metric_date,weight_kg,measures"),
+      ]);
+      if (!Auth.user || Auth.user.id !== uid) return false;
+      const remoteW = {}, remoteM = {};
+      rw.forEach(r => { remoteW[r.id] = { id: r.id, date: r.workout_date, exercises: r.exercises || {}, ...(r.note ? { note: r.note } : {}) }; });
+      rm.forEach(r => { const o = {}; if (r.weight_kg != null) o.kg = Number(r.weight_kg); if (r.measures) o.m = r.measures; remoteM[r.metric_date] = o; });
+
+      const reg = this._reg(uid);
+      const lw = this._localW(), lm = this._localM();
+      const mw = this._merge(lw, remoteW, reg.w, opts.allowMassDelete);
+      const mm = this._merge(lm, remoteM, reg.m, opts.allowMassDelete);
+
+      const now = new Date().toISOString();
+      await this._upsert("workouts", "user_id,id", mw.up.map(k => ({ user_id: uid, id: k, workout_date: lw[k].date, exercises: lw[k].exercises, note: lw[k].note || null, updated_at: now })));
+      await this._delete("workouts", "id", mw.delRemote);
+      await this._upsert("body_metrics", "user_id,metric_date", mm.up.map(k => ({ user_id: uid, metric_date: k, weight_kg: lm[k].kg ?? null, measures: lm[k].m ?? null, updated_at: now })));
+      await this._delete("body_metrics", "metric_date", mm.delRemote);
+
+      if (!Auth.user || Auth.user.id !== uid) return false;
+      if (Object.keys(mw.setLocal).length || mw.delLocal.length) {
+        const map = { ...lw }; mw.delLocal.forEach(k => delete map[k]); Object.assign(map, mw.setLocal);
+        this._applyW(map); changed = true;
+      }
+      if (Object.keys(mm.setLocal).length || mm.delLocal.length) {
+        const map = { ...lm }; mm.delLocal.forEach(k => delete map[k]); Object.assign(map, mm.setLocal);
+        this._applyM(map); changed = true;
+      }
+      this._saveReg(uid, { w: mw.newReg, m: mm.newReg });
+      if (changed) Store.commit();
+    } finally { /* nada que liberar */ }
+    return changed;
+  },
+
+  // Copia para el respaldo en la nube: sin lo que ya vive en tablas
+  stripped(state) { return { ...state, workouts: [], weights: [], measurements: [], recordsInDb: true }; },
+};
+
 /* ---- Gate: la app no se muestra sin sesión ---- */
 const Gate = {
   locked() { return Sync.configured() && !Auth.user; },
@@ -1583,6 +1720,7 @@ const Session = {
       if (isEmpty(Store.s) && guest && !isEmpty(guest)) Store.replace(JSON.parse(JSON.stringify(guest)));
       Sync.push().catch(() => {});
     }
+    try { await Records.sync(); } catch (_) {}
     Router.render();
   },
 
@@ -2682,6 +2820,7 @@ const Sheets = {
               const row = await Sync.pull();
               if (!confirm(`Se va a reemplazar lo de este dispositivo por la nube (${new Date(row.updated_at).toLocaleString("es")}). ¿Seguimos?`)) return;
               Store.replace(row.data);
+              try { await Records.sync(); } catch (_) {}
               UI.closeSheet(); Router.render();
               UI.toast("Datos restaurados");
             } catch (e) { UI.toast("No se pudo: " + e.message); }
@@ -2729,6 +2868,10 @@ const Sheets = {
         sheet.querySelector("#wipe").onclick = () => {
           if (confirm("¿Seguro? Se borra todo: entrenos, peso, fotos y hábitos.")) {
             Store.reset(); UI.closeSheet(); Router.render();
+            if (Auth.user) {
+              Records.sync({ allowMassDelete: true }).catch(() => {});
+              Photos.load().then(async items => { for (const it of items) await Photos.remove(it); Photos.items = []; }).catch(() => {});
+            }
           }
         };
       });
@@ -2814,7 +2957,7 @@ const Router = (() => {
         Router.render();
         UI.toast("Sincronizado desde la nube");
       }
-    }).catch(() => {});
+    }).catch(() => {}).then(() => Records.sync()).then(ch => { if (ch) Router.render(); }).catch(() => {});
   }
 
   Router.render();
