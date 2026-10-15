@@ -1661,6 +1661,26 @@ const Records = {
   stripped(state) { return { ...state, workouts: [], weights: [], measurements: [], recordsInDb: true }; },
 };
 
+/* ---- Intake: las respuestas de la persona (objetivo, días, equipo, límites) viven en la base;
+   el coach las lee ahí para armar el plan. ---- */
+const Intake = {
+  data: undefined,   // undefined = sin cargar, null = no respondió
+  async load() {
+    if (!Auth.user) return (this.data = null);
+    const url = Conn.get().supabaseUrl.trim().replace(/\/+$/, "") + "/rest/v1/user_intake?select=*&limit=1";
+    const res = await fetch(url, { headers: await Sync._headers() });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    return (this.data = (await res.json())[0] || null);
+  },
+  async save(o) {
+    const url = Conn.get().supabaseUrl.trim().replace(/\/+$/, "") + "/rest/v1/user_intake?on_conflict=user_id";
+    const row = { user_id: Auth.user.id, ...o, updated_at: new Date().toISOString() };
+    const res = await fetch(url, { method: "POST", headers: { ...(await Sync._headers()), Prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify([row]) });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    this.data = row;
+  },
+};
+
 /* ---- Gate: la app no se muestra sin sesión ---- */
 const Gate = {
   locked() { return Sync.configured() && !Auth.user; },
@@ -1728,7 +1748,7 @@ const Session = {
 
   signOut() {
     if (typeof Subviews !== "undefined") Subviews._note = null;
-    Photos.items = null;
+    Photos.items = null; Intake.data = undefined;
     CfgStore.clear();
     Auth.signOut();
     Storage.setNamespace(null);
@@ -1938,6 +1958,7 @@ Screens.hoy = function (root) {
 
     <div class="coach">${Coach.today()}</div>
     <div id="coachnote"></div>
+    <div id="intakecard"></div>
     <button class="btn ghost small mt8" data-ai>Análisis del coach con IA</button>
 
     ${!Plan.started() ? `
@@ -2024,6 +2045,25 @@ Screens.hoy = function (root) {
     const paras = String(n.content).split(/\n{2,}/).map(t => `<p class="mt8" style="font-size:14.5px;line-height:1.5">${UI.esc(t).replace(/\n/g, "<br>")}</p>`).join("");
     box.innerHTML = `<div class="card mt8" style="border-color: var(--violet)"><div class="eyebrow" style="color:var(--violet)">Tu coach · semana del ${Dates.fmt(n.week_start)}</div>${paras}</div>`;
   };
+  // Tarjeta de bienvenida: mientras la cuenta no tenga plan, pide las respuestas para armarlo
+  const showIntake = () => {
+    const box = root.querySelector("#intakecard");
+    if (!box || !Auth.user || CfgStore.data) return;
+    const d = Intake.data;
+    if (d === undefined) return;
+    box.innerHTML = d
+      ? `<div class="card mt8"><div class="eyebrow">Tu plan</div>
+           <p class="mt8" style="font-size:14.5px">Recibimos tus respuestas. Tu coach está armando tu plan; cuando esté listo, aparece acá solo.</p>
+           <button class="btn ghost small mt8" data-intake>Revisar mis respuestas</button></div>`
+      : `<div class="card mt8" style="border-color: var(--violet); background: var(--violet-dim)"><div class="eyebrow" style="color:var(--violet)">Armemos tu plan</div>
+           <p class="mt8" style="font-size:14.5px">Contanos qué querés lograr, cuándo podés entrenar y con qué contás. Con eso tu coach te arma un plan a tu medida.</p>
+           <button class="btn mint small mt8" data-intake>Responder (2 minutos)</button></div>`;
+    box.querySelector("[data-intake]").onclick = () => Sheets.intake();
+  };
+  if (Auth.user && !CfgStore.data) {
+    showIntake();
+    Intake.load().then(showIntake).catch(() => {});
+  }
   if (Subviews._note) showNote(Subviews._note);
   if (Auth.user) Sync.latestNote().then(n => { Subviews._note = n; showNote(n); }).catch(() => {});
   root.querySelector("[data-ai]").onclick = () => Sheets.aiCoach();
@@ -2523,6 +2563,44 @@ const Sheets = {
       });
   },
 
+  intake() {
+    const d = Intake.data || {};
+    const opt = (vals, cur, fmt) => vals.map(v => `<option value="${v}" ${String(cur) === String(v) ? "selected" : ""}>${fmt ? fmt(v) : v}</option>`).join("");
+    UI.openSheet(`
+      <h3>Tu objetivo y tu disponibilidad</h3>
+      <div class="field"><label>¿Qué querés lograr?</label>
+        <textarea id="ik-goal" maxlength="600" placeholder="Ej.: bajar de peso, ganar fuerza, tonificar, volver a entrenar…">${UI.esc(d.goal || "")}</textarea></div>
+      <div class="field"><label>¿Para cuándo? (opcional)</label><input type="date" id="ik-date" value="${d.target_date || ""}"></div>
+      <div class="grid2">
+        <div class="field"><label>Días por semana</label><select id="ik-days"><option value="">—</option>${opt([1,2,3,4,5,6], d.days_per_week)}</select></div>
+        <div class="field"><label>Minutos por sesión</label><select id="ik-min"><option value="">—</option>${opt([20,30,45,60,75,90], d.session_minutes)}</select></div>
+      </div>
+      <div class="field"><label>¿Dónde entrenás?</label>
+        <select id="ik-place"><option value="">—</option>${opt(["Gimnasio","Casa","Gimnasio y casa","Aire libre"], d.place)}</select></div>
+      <div class="field"><label>¿Con qué contás?</label>
+        <textarea id="ik-eq" maxlength="600" placeholder="Máquinas, mancuernas, bandas, colchoneta, nada…">${UI.esc(d.equipment || "")}</textarea></div>
+      <div class="field"><label>Lesiones, molestias o cosas a cuidar</label>
+        <textarea id="ik-lim" maxlength="600" placeholder="Si no hay nada, dejalo vacío. Si hay algo de salud, consultalo antes con tu médico.">${UI.esc(d.limits || "")}</textarea></div>
+      <div class="field"><label>Algo más que quieras que sepa</label>
+        <textarea id="ik-notes" maxlength="600">${UI.esc(d.notes || "")}</textarea></div>
+      <p class="dimtext small" style="margin:-4px 0 12px">Esto lo ve tu coach para armarte el plan. Se guarda en tu cuenta, no en la de nadie más.</p>
+      <button class="btn mint" id="iksave">Guardar</button>`,
+      sheet => {
+        sheet.querySelector("#iksave").onclick = async () => {
+          const v = id => sheet.querySelector(id).value.trim();
+          const o = {
+            goal: v("#ik-goal") || null, target_date: v("#ik-date") || null,
+            days_per_week: +v("#ik-days") || null, session_minutes: +v("#ik-min") || null,
+            place: v("#ik-place") || null, equipment: v("#ik-eq") || null,
+            limits: v("#ik-lim") || null, notes: v("#ik-notes") || null,
+          };
+          if (!o.goal) return UI.toast("Contanos al menos qué querés lograr");
+          try { await Intake.save(o); UI.closeSheet(); Router.render(); UI.toast("Listo, gracias "); }
+          catch (e) { UI.toast("No se pudo guardar: " + e.message); }
+        };
+      });
+  },
+
   logMeasures() {
     const last = [...Store.s.measurements].sort((a,b)=>a.date<b.date?-1:1).pop() || {};
     UI.openSheet(`
@@ -2739,6 +2817,7 @@ const Sheets = {
       </div>
       <p class="dimtext small" style="margin:-6px 0 8px">Las sesiones de cada fase se reparten en orden sobre los días que marques. Sin marcar = calendario del plan.</p>
       <button class="btn ghost" id="tdsave">Guardar días</button>
+      ${Auth.user ? `<button class="btn ghost mt8" id="intakeopen">Mi objetivo y mi disponibilidad</button>` : ""}
       <h2 style="margin-left:0">Coach IA (Gemini)</h2>
       <div class="field"><label>API key de Google AI Studio</label>
         <input type="password" id="gk" value="${UI.esc(c.geminiKey || "")}" placeholder="AIza…"></div>
@@ -2812,6 +2891,7 @@ const Sheets = {
         };
 
         if (Auth.user) {
+          sheet.querySelector("#intakeopen").onclick = async () => { try { await Intake.load(); } catch (_) {} Sheets.intake(); };
           sheet.querySelector("#push").onclick = async () => {
             UI.toast("Sincronizando…");
             try { await Sync.push(); UI.toast("Sincronizado"); }
