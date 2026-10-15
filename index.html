@@ -502,12 +502,13 @@ const CONFIG = {
   storageKey: "vform.v1",
 
   goal: {
-    startWeight: 98,
-    targetWeight: 92,
+    startWeight: 80,
+    targetWeight: 75,
     targetDateISO: "2026-12-31",
-    hangTargetSecs: 90,
-    pullupTarget: 5,   // reps estrictas en una sola serie
-    label: "Espalda en V · primera dominada · −6 kg",
+    hangTargetSecs: 0,
+    pullupTarget: 0,   // 0 = sin objetivo de dominadas (se oculta esa parte de la app)
+    label: "Tu objetivo",
+    coachText: "mejorar tu fuerza, tu constancia y tu composición corporal",
   },
 
   // Catálogo de ejercicios del plan de gimnasio.
@@ -515,23 +516,23 @@ const CONFIG = {
   // ref = carga de referencia (kg) · step = salto de carga · noScale = no se reduce en la reentrada
   exercises: [
     { id: "dominada",       name: "Dominada estricta",        type: "reps",   icon: "", cue: "Sin balanceo. 2–3 intentos al inicio, fresco, parando antes del fallo", sets: 3, reps: "2–3", noScale: true },
-    { id: "dominada-asist", name: "Dominada asistida",        type: "kgreps", unit: "kg de asistencia", icon: "", cue: "Menos asistencia = más fuerte", sets: 3, reps: "5", ref: 50, step: 2.5, noScale: true, assist: true },
-    { id: "banca",          name: "Press de banca con barra", type: "kgreps", unit: "kg por lado",       icon: "", cue: "Escápulas atrás, pies firmes", sets: 3, reps: "8–10", ref: 20, step: 2.5 },
-    { id: "jalon",          name: "Jalón al pecho",           type: "kgreps", unit: "kg",                icon: "⬇", cue: "Pecho arriba, codos hacia abajo", sets: 3, reps: "8–12", ref: 66, step: 1 },
-    { id: "inclinado",      name: "Press inclinado con mancuernas", type: "kgreps", unit: "kg por mancuerna", icon: "", cue: "Controlá la bajada, pecho abierto", sets: 3, reps: "8–12", ref: 17.5, step: 2.5 },
-    { id: "remo",           name: "Remo en máquina/polea",    type: "kgreps", unit: "kg",                icon: "", cue: "Grosor de espalda: tirá con los codos", sets: 3, reps: "8–12", ref: 66, step: 1 },
-    { id: "laterales",      name: "Elevaciones laterales",    type: "kgreps", unit: "kg por mancuerna", icon: "", cue: "Controladas, sin lanzar la mancuerna", sets: 3, reps: "12–15", ref: 5, step: 1 },
-    { id: "triceps",        name: "Tríceps en polea",         type: "kgreps", unit: "kg",                icon: "", cue: "Codos pegados al cuerpo", sets: 2, reps: "10–15", ref: 41, step: 1 },
-    { id: "curl",           name: "Curl de bíceps",           type: "kgreps", unit: "kg por mancuerna", icon: "", cue: "Sin balancear el torso", sets: 2, reps: "10–15", ref: 8.75, step: 1.25 },
-    { id: "pecho-maq",      name: "Press de pecho en máquina", type: "kgreps", unit: "kg",               icon: "", cue: "Hombros atrás y abajo", sets: 3, reps: "10", ref: 52, step: 1 },
-    { id: "jalon-abierto",  name: "Jalón agarre abierto",     type: "kgreps", unit: "kg",                icon: "", cue: "Ancho de espalda: codos hacia los costados", sets: 3, reps: "8", ref: 59, step: 1 },
-    { id: "press-hombros",  name: "Press de hombros con mancuernas", type: "kgreps", unit: "kg por mancuerna", icon: "", cue: "Costillas abajo, sin arquear", sets: 3, reps: "10–12", ref: 15, step: 2.5 },
+    { id: "dominada-asist", name: "Dominada asistida",        type: "kgreps", unit: "kg de asistencia", icon: "", cue: "Menos asistencia = más fuerte", sets: 3, reps: "5", ref: null, step: 2.5, noScale: true, assist: true },
+    { id: "banca",          name: "Press de banca con barra", type: "kgreps", unit: "kg por lado",       icon: "", cue: "Escápulas atrás, pies firmes", sets: 3, reps: "8–10", ref: null, step: 2.5 },
+    { id: "jalon",          name: "Jalón al pecho",           type: "kgreps", unit: "kg",                icon: "⬇", cue: "Pecho arriba, codos hacia abajo", sets: 3, reps: "8–12", ref: null, step: 1 },
+    { id: "inclinado",      name: "Press inclinado con mancuernas", type: "kgreps", unit: "kg por mancuerna", icon: "", cue: "Controlá la bajada, pecho abierto", sets: 3, reps: "8–12", ref: null, step: 2.5 },
+    { id: "remo",           name: "Remo en máquina/polea",    type: "kgreps", unit: "kg",                icon: "", cue: "Grosor de espalda: tirá con los codos", sets: 3, reps: "8–12", ref: null, step: 1 },
+    { id: "laterales",      name: "Elevaciones laterales",    type: "kgreps", unit: "kg por mancuerna", icon: "", cue: "Controladas, sin lanzar la mancuerna", sets: 3, reps: "12–15", ref: null, step: 1 },
+    { id: "triceps",        name: "Tríceps en polea",         type: "kgreps", unit: "kg",                icon: "", cue: "Codos pegados al cuerpo", sets: 2, reps: "10–15", ref: null, step: 1 },
+    { id: "curl",           name: "Curl de bíceps",           type: "kgreps", unit: "kg por mancuerna", icon: "", cue: "Sin balancear el torso", sets: 2, reps: "10–15", ref: null, step: 1.25 },
+    { id: "pecho-maq",      name: "Press de pecho en máquina", type: "kgreps", unit: "kg",               icon: "", cue: "Hombros atrás y abajo", sets: 3, reps: "10", ref: null, step: 1 },
+    { id: "jalon-abierto",  name: "Jalón agarre abierto",     type: "kgreps", unit: "kg",                icon: "", cue: "Ancho de espalda: codos hacia los costados", sets: 3, reps: "8", ref: null, step: 1 },
+    { id: "press-hombros",  name: "Press de hombros con mancuernas", type: "kgreps", unit: "kg por mancuerna", icon: "", cue: "Costillas abajo, sin arquear", sets: 3, reps: "10–12", ref: null, step: 2.5 },
     { id: "face-pull",      name: "Face pull",                type: "kgreps", unit: "kg",                icon: "", cue: "Liviano, hombro posterior y postura", sets: 3, reps: "12–15", ref: null, step: 1 },
-    { id: "prensa",         name: "Prensa de piernas",        type: "kgreps", unit: "kg",                icon: "", cue: "Rango cómodo, sin despegar la cadera", sets: 3, reps: "10", ref: 100, step: 5 },
+    { id: "prensa",         name: "Prensa de piernas",        type: "kgreps", unit: "kg",                icon: "", cue: "Rango cómodo, sin despegar la cadera", sets: 3, reps: "10", ref: null, step: 5 },
     { id: "curl-femoral",   name: "Curl femoral en máquina",  type: "kgreps", unit: "kg",                icon: "", cue: "Liviano al principio, buena técnica", sets: 3, reps: "10–12", ref: null, step: 1 },
     { id: "fondos",         name: "Fondos en paralelas",      type: "reps",   icon: "", cue: "Bajá controlado, subí con fuerza", sets: 2, reps: "6–10" },
     { id: "curl-barra",     name: "Curl de bíceps (barra o máquina)", type: "kgreps", unit: "kg", icon: "", cue: "Sin balancear el torso", sets: 2, reps: "10–15", ref: null, step: 2.5 },
-    { id: "crunch",         name: "Crunch en máquina",         type: "kgreps", unit: "kg",                icon: "", cue: "Enrollá el torso, no tires con los brazos", sets: 3, reps: "15", ref: 45, step: 5 },
+    { id: "crunch",         name: "Crunch en máquina",         type: "kgreps", unit: "kg",                icon: "", cue: "Enrollá el torso, no tires con los brazos", sets: 3, reps: "15", ref: null, step: 5 },
     { id: "plancha",        name: "Plancha",                  type: "secs",   icon: "", cue: "Abdomen apretado, sin arquear", sets: 3, reps: "30–45 s" },
     { id: "bird-dog",       name: "Bird-dog",                 type: "reps",   icon: "", cue: "Lento, columna neutra", sets: 2, reps: "10 por lado" },
   ],
@@ -554,31 +555,25 @@ const CONFIG = {
   plan: {
     phases: [
       { id: 1, name: "Reentrada", weeks: "semanas 1–2", factor: 0.675, setsCap: 2,
-        rule: "65–70 % de tus cargas, 3–4 repeticiones en reserva y sin llegar al fallo. Cardio: solo caminata suave.",
-        days: { 1: "torsoA", 3: "piernas", 5: "torsoB" } },
+        rule: "65–70 % de tus cargas, 3–4 repeticiones en reserva y sin llegar al fallo.",
+        days: { 1: "fullA", 3: "fullB", 5: "fullA" } },
       { id: 2, name: "Reconstrucción", weeks: "semanas 3–4", factor: 0.85, setsCap: null,
         rule: "85 % de tus cargas, series completas y 2 repeticiones en reserva.",
-        days: { 1: "torsoA", 2: "piernas", 4: "torsoB", 5: "torsoV" } },
+        days: { 1: "fullA", 3: "fullB", 5: "fullA" } },
       { id: 3, name: "Progresión", weeks: "semana 5 en adelante", factor: 1, setsCap: null,
-        rule: "Tus pesos de referencia. Doble progresión: primero 10/10/10, después 12/12/12 y recién ahí subís kilos.",
-        days: { 1: "torsoA", 2: "piernas", 3: "torsoB", 5: "full" }, cardio: [4] },
+        rule: "Tus pesos de referencia. Doble progresión: primero llegá al tope de repeticiones en todas las series y recién ahí subí kilos.",
+        days: { 1: "fullA", 3: "fullB", 5: "fullA" } },
     ],
     sessions: {
-      torsoA:  { name: "Torso A", sub: "Pecho · espalda · hombros",
-                 ex: ["dominada", "dominada-asist", "banca", "jalon", "inclinado", "remo", "laterales", "triceps", "curl", "curl-barra"] },
-      torsoB:  { name: "Torso B", sub: "Espalda · pecho · hombros",
-                 ex: ["dominada", "dominada-asist", "remo", "pecho-maq", "jalon-abierto", "press-hombros", "laterales", "face-pull", "curl", "curl-barra"] },
-      torsoV:  { name: "Torso V", sub: "Espalda ancha y hombros",
-                 ex: ["dominada", "dominada-asist", "jalon-abierto", "remo", "press-hombros", "laterales", "face-pull"] },
-      piernas: { name: "Piernas y core", sub: "Piernas · abdomen",
-                 ex: ["prensa", "curl-femoral", "plancha", "bird-dog"] },
-      full:    { name: "Full body + V", sub: "Cuerpo completo",
-                 ex: ["dominada", "dominada-asist", "inclinado", "remo", "prensa", "jalon", "laterales", "fondos", "crunch"] },
+      fullA: { name: "Cuerpo completo A", sub: "Piernas · empuje · tirón",
+               ex: ["prensa", "pecho-maq", "jalon", "remo", "press-hombros", "plancha"] },
+      fullB: { name: "Cuerpo completo B", sub: "Piernas · empuje · tirón",
+               ex: ["prensa", "inclinado", "jalon-abierto", "remo", "laterales", "bird-dog"] },
     },
   },
 
   // Punto de partida de dominadas (sesiones previas a la app)
-  baseline: { pullupReps: 2, assistKg: 50 },
+  baseline: { pullupReps: 0, assistKg: 60 },
 
   // Etapas hacia la dominada, según mejor tiempo de colgado
   pullupStages: [
@@ -617,9 +612,6 @@ const CONFIG = {
   habits: [
     { id: "agua",     name: "Agua",        icon: "", kind: "good",  meta: "2 litros o más" },
     { id: "proteina", name: "Proteína",    icon: "", kind: "good",  meta: "En cada comida" },
-    { id: "creatina", name: "Creatina",    icon: "", kind: "good",  meta: "5 g diarios" },
-    { id: "coca",     name: "Coca-Cola",   icon: "", kind: "avoid", meta: "Marcá solo si tomaste" },
-    { id: "vino",     name: "Vino",        icon: "", kind: "avoid", meta: "Marcá solo si tomaste" },
     { id: "sueno",    name: "Dormí bien",  icon: "", kind: "good",  meta: "7 horas o más" },
     { id: "entrene",  name: "Entrené",     icon: "", kind: "good",  meta: "Sesión completa" },
     { id: "camine",   name: "Caminé",      icon: "", kind: "good",  meta: "Caminata del día" },
@@ -815,13 +807,29 @@ const Store = (() => {
   return {
     get s() { return state; },
     commit() { state.updatedAt = new Date().toISOString(); Storage.save(state); subs.forEach(fn => fn(state)); },
-    replace(next) { state = ensure(next); this.commit(); },
+    replace(next) {
+      // Un respaldo viejo sin `config` no debe borrar el plan del usuario
+      if (next && !next.config && state.config) next.config = state.config;
+      state = ensure(next); this.commit();
+    },
     // Recarga desde el namespace activo (cambio de usuario) sin pisar updatedAt
     reload() { state = ensure(Storage.load() || blank()); subs.forEach(fn => fn(state)); },
-    reset() { state = blank(); this.commit(); },
+    reset() { const c = state.config; state = blank(); if (c) state.config = c; this.commit(); },
     subscribe(fn) { subs.add(fn); return () => subs.delete(fn); },
   };
 })();
+
+/* ---- Cfg: configuración por usuario (plan, ejercicios, objetivo, hábitos).
+   Si el estado del usuario trae `config`, manda; si no, valen los defaults de CONFIG. ---- */
+const Cfg = new Proxy({}, {
+  get(_, k) {
+    const o = (typeof Store !== "undefined" && Store.s && Store.s.config) || null;
+    if (k === "pullups") return (Cfg.goal.pullupTarget || 0) > 0;
+    if (k === "hasCoke") return Cfg.habits.some(h => h.id === "coca");
+    if (k === "goal") return { ...CONFIG.goal, ...((o && o.goal) || {}) };
+    return (o && o[k] != null) ? o[k] : CONFIG[k];
+  },
+});
 
 /* ==========================================================================
    Services — lógica de negocio pura
@@ -851,7 +859,7 @@ const Dates = {
 
 /* ---- Ejercicios (plan actual + historial legacy) ---- */
 const Ex = {
-  all() { return [...CONFIG.exercises, ...CONFIG.legacyExercises]; },
+  all() { return [...Cfg.exercises, ...Cfg.legacyExercises]; },
   get(id) { return this.all().find(e => e.id === id) || null; },
   setText(ex, sets) {
     return sets.map(s => ex.type === "kgreps" ? `${s.kg ?? 0}×${s.v}` : ex.type === "secs" ? `${s.v}s` : `${s.v}`).join(" · ");
@@ -869,7 +877,7 @@ const Plan = {
     const d = Dates.daysBetween(s, key);
     return d < 14 ? 1 : d < 28 ? 2 : 3;
   },
-  phase(key) { return CONFIG.plan.phases.find(p => p.id === this.phaseId(key)); },
+  phase(key) { return Cfg.plan.phases.find(p => p.id === this.phaseId(key)); },
   // Días elegidos en Ajustes: las sesiones de la fase se reparten en orden sobre esos días
   daysMap(ph) {
     const custom = Store.s.profile.trainDays;
@@ -885,11 +893,11 @@ const Plan = {
     const ph = this.phase(key);
     const sid = this.daysMap(ph)[Dates.weekday(key)];
     if (!sid) return null;
-    const s = CONFIG.plan.sessions[sid];
+    const s = Cfg.plan.sessions[sid];
     return { id: sid, name: s.name, sub: s.sub, ex: (ph.id === 1 && s.exP1) ? s.exP1 : s.ex, phase: ph };
   },
   sessionById(id, key) {
-    const s = CONFIG.plan.sessions[id]; if (!s) return null;
+    const s = Cfg.plan.sessions[id]; if (!s) return null;
     const ph = this.phase(key);
     return { id, name: s.name, sub: s.sub, ex: (ph.id === 1 && s.exP1) ? s.exP1 : s.ex, phase: ph };
   },
@@ -897,7 +905,7 @@ const Plan = {
   inferSession(w, key) {
     const logged = Object.keys(w?.exercises || {});
     let best = 0, id = null;
-    Object.entries(CONFIG.plan.sessions).forEach(([sid, x]) => {
+    Object.entries(Cfg.plan.sessions).forEach(([sid, x]) => {
       const n = logged.filter(e => x.ex.includes(e)).length;
       if (n > best) { best = n; id = sid; }
     });
@@ -951,7 +959,7 @@ const Progress = {
   },
   // % global del objetivo: mitad peso, mitad camino a la dominada
   goalPct() {
-    return Math.round(this.weightPct() * 0.5 + Pullup.pct() * 0.5);
+    return Cfg.pullups ? Math.round(this.weightPct() * 0.5 + Pullup.pct() * 0.5) : Math.round(this.weightPct());
   },
   weekTrend() {
     const w = [...Store.s.weights].sort((a,b) => a.date < b.date ? -1 : 1);
@@ -1055,7 +1063,7 @@ const Pullup = {
     return Workouts.sorted().map(w => ({ date: w.date, reps: Math.max(Workouts.bestSet(w, "dominada") || 0, strictAsAssist(w)) })).filter(h => h.reps > 0);
   },
   bestReps() {
-    return Math.max(CONFIG.baseline.pullupReps, ...this.repsHistory().map(h => h.reps));
+    return Math.max(Cfg.baseline.pullupReps, ...this.repsHistory().map(h => h.reps));
   },
   assistHistory() {
     return Workouts.sorted().map(w => {
@@ -1064,16 +1072,16 @@ const Pullup = {
     }).filter(h => h.kg !== null);
   },
   bestAssist() {
-    return Math.min(CONFIG.baseline.assistKg, ...this.assistHistory().map(h => h.kg));
+    return Math.min(Cfg.baseline.assistKg, ...this.assistHistory().map(h => h.kg));
   },
   pct() {
-    return Math.min(100, (this.bestReps() / CONFIG.goal.pullupTarget) * 100);
+    return Math.min(100, (this.bestReps() / Cfg.goal.pullupTarget) * 100);
   },
   stage() {
     const best = this.bestHang();
     let idx = 0;
-    CONFIG.pullupStages.forEach((s, i) => { if (best >= s.min) idx = i; });
-    return { idx, ...CONFIG.pullupStages[idx] };
+    Cfg.pullupStages.forEach((s, i) => { if (best >= s.min) idx = i; });
+    return { idx, ...Cfg.pullupStages[idx] };
   },
   // Regresión lineal sobre los últimos colgados → fecha estimada de 90 s
   prediction() {
@@ -1089,7 +1097,7 @@ const Pullup = {
     const slope = (n*sxy - sx*sy) / denom;           // segundos ganados por día
     const intercept = (sy - slope*sx) / n;
     if (slope <= 0.05) return { ready: true, slope, stalled: true };
-    const target = CONFIG.goal.hangTargetSecs;
+    const target = Cfg.goal.hangTargetSecs;
     const daysToTarget = (target - intercept) / slope;
     const dateKey = Dates.addDays(Dates.key(new Date(t0)), Math.ceil(daysToTarget));
     const daysLeft = Math.max(0, Dates.daysBetween(Dates.todayKey(), dateKey));
@@ -1097,7 +1105,7 @@ const Pullup = {
   },
   shouldProgress() {
     // Aviso de subir dificultad: 3 sesiones seguidas superando el umbral de la etapa siguiente
-    const stages = CONFIG.pullupStages;
+    const stages = Cfg.pullupStages;
     const st = this.stage();
     if (st.idx >= stages.length - 1) return null;
     const nextMin = stages[st.idx + 1].min;
@@ -1121,7 +1129,7 @@ const Habits = {
   },
   // Racha de un hábito. good: días seguidos marcado. avoid: días seguidos SIN marcar
   streak(id) {
-    const def = CONFIG.habits.find(h => h.id === id);
+    const def = Cfg.habits.find(h => h.id === id);
     if (!def) return 0;
     const first = this.firstLogDate();
     if (!first) return 0;
@@ -1189,12 +1197,12 @@ const Coach = {
     const msgs = [];
     // Basados en datos concretos: solo entran si el dato existe
     if (kg > 0) msgs.push(`Ya dejaste atrás <em>${kg} kg</em>. Faltan ${left}. El cuerpo que buscás se construye exactamente así: sesión a sesión.`);
-    if (reps > 0) msgs.push(`Tu mejor serie de dominadas estrictas es de <em>${reps}</em>. Cada repetición nueva es espalda ancha que se nota.`);
-    if (reps < CONFIG.goal.pullupTarget) msgs.push(`Te faltan <em>${CONFIG.goal.pullupTarget - reps}</em> para tu objetivo de dominadas. Son repeticiones, no meses.`);
+    if (Cfg.pullups && reps > 0) msgs.push(`Tu mejor serie de dominadas estrictas es de <em>${reps}</em>. Cada repetición nueva es espalda ancha que se nota.`);
+    if (Cfg.pullups && reps < Cfg.goal.pullupTarget) msgs.push(`Te faltan <em>${Cfg.goal.pullupTarget - reps}</em> para tu objetivo de dominadas. Son repeticiones, no meses.`);
     if (streak >= 2) msgs.push(`Llevás <em>${streak} entrenamientos seguidos</em> sin fallar. La constancia es el único suplemento que funciona siempre.`);
     if (streak >= 5) msgs.push(`Racha de <em>${streak}</em>. Esto ya no es motivación: es identidad. Sos alguien que entrena.`);
-    if (coke >= 3) msgs.push(`<em>${coke} días sin Coca-Cola</em>. Esa constancia silenciosa vale tanto como cualquier serie.`);
-    if (coke >= 14) msgs.push(`Dos semanas o más sin Coca-Cola. Tu cintura lo va a notar antes que vos.`);
+    if (Cfg.hasCoke && coke >= 3) msgs.push(`<em>${coke} días sin Coca-Cola</em>. Esa constancia silenciosa vale tanto como cualquier serie.`);
+    if (Cfg.hasCoke && coke >= 14) msgs.push(`Dos semanas o más sin Coca-Cola. Tu cintura lo va a notar antes que vos.`);
     if (trend !== null && trend < 0) msgs.push(`Esta semana: <em>${trend} kg</em>. Vas en la dirección correcta. Mantené el plan, no lo cambies porque funciona.`);
     if (trend !== null && trend >= 0 && kg > 0) msgs.push(`La balanza se movió poco esta semana. Normal: el progreso no es lineal. Se juzga por meses, no por días.`);
     if (daysToDec > 0) msgs.push(`Quedan <em>${daysToDec} días</em> hasta diciembre. Es tiempo de sobra si cada semana cumplís las sesiones del plan.`);
@@ -1241,23 +1249,23 @@ const AI = {
       .map(w => `${w.date}:${w.kg}kg`).join(", ") || "sin registros";
     const ms = [...Store.s.measurements].sort((a,b)=>a.date<b.date?-1:1);
     const lm = ms.length ? ms[ms.length-1] : null;
-    const measures = lm ? `${lm.date}: ` + CONFIG.measures.filter(m => lm[m.id] != null).map(m => `${m.name} ${lm[m.id]} cm`).join(", ") : "sin medidas";
+    const measures = lm ? `${lm.date}: ` + Cfg.measures.filter(m => lm[m.id] != null).map(m => `${m.name} ${lm[m.id]} cm`).join(", ") : "sin medidas";
     const today = Dates.todayKey();
-    const habitLine = CONFIG.habits.map(h => {
+    const habitLine = Cfg.habits.map(h => {
       let n = 0;
       for (let i = 0; i < 7; i++) if (Habits.get(Dates.addDays(today, -i))[h.id]) n++;
       return `${h.name}: ${n}/7`;
     }).join(", ");
     return [
-      `Objetivo: espalda en V (hombros y espalda más anchos), pecho más desarrollado, cintura menor y dominadas estrictas (meta ${CONFIG.goal.pullupTarget} reps en una serie), para ${p.targetDateISO}. Peso ${p.startWeight} → ${p.targetWeight} kg.`,
+      `Objetivo: ${Cfg.goal.coachText}${Cfg.pullups ? ` (meta de dominadas estrictas: ${Cfg.goal.pullupTarget} reps en una serie)` : ""}, para ${p.targetDateISO}. Peso ${p.startWeight} → ${p.targetWeight} kg.`,
       `Fase del plan: ${Plan.started() ? `${ph.id} (${ph.name}) — ${Plan.progressText()}` : "la vuelta todavía no empezó (fase 1 al arrancar)"}. Regla de la fase: ${ph.rule}`,
       `Peso (últimos registros): ${weights}. Actual: ${Progress.currentKg()} kg.`,
       `Medidas (última): ${measures}.`,
-      `Dominadas: mejor serie estricta ${Pullup.bestReps()} reps; menor asistencia ${Pullup.bestAssist()} kg.`,
+      Cfg.pullups ? `Dominadas: mejor serie estricta ${Pullup.bestReps()} reps; menor asistencia ${Pullup.bestAssist()} kg.` : "",
       `Últimas sesiones: ${ws}.`,
       `Hábitos últimos 7 días: ${habitLine}.`,
-      `Racha de entrenos: ${Workouts.trainingStreak()}. Días sin Coca-Cola: ${Habits.daysWithoutCoke()}.`,
-    ].join("\n");
+      `Racha de entrenos: ${Workouts.trainingStreak()}.${Cfg.hasCoke ? ` Días sin Coca-Cola: ${Habits.daysWithoutCoke()}.` : ""}`,
+    ].filter(Boolean).join("\n");
   },
 
   async analyze(force = false) {
@@ -1578,7 +1586,7 @@ const UI = {
   pullupRail() {
     const st = Pullup.stage();
     const best = Pullup.bestHang();
-    const stages = CONFIG.pullupStages;
+    const stages = Cfg.pullupStages;
     // Progreso continuo dentro del riel
     let fillPct = 0;
     for (let i = 0; i < stages.length; i++) {
@@ -1695,26 +1703,26 @@ Screens.hoy = function (root) {
 
     <h2>HACIA EL OBJETIVO</h2>
     <div class="card">
-      <div class="ledger">
+      <div class="ledger" style="grid-template-columns:repeat(${Cfg.pullups ? 3 : 2},1fr)">
         <div><span class="k">PESO</span><span class="v">${cur.toFixed(1).replace(".", ",")}</span><span class="d">meta ${p.targetWeight} kg</span></div>
-        <div><span class="k">DOMINADAS</span><span class="v">${Pullup.bestReps()}<small>/${CONFIG.goal.pullupTarget}</small></span><span class="d">estrictas</span></div>
+        ${Cfg.pullups ? `<div><span class="k">DOMINADAS</span><span class="v">${Pullup.bestReps()}<small>/${Cfg.goal.pullupTarget}</small></span><span class="d">estrictas</span></div>` : ""}
         <div><span class="k">OBJETIVO</span><span class="v">${Progress.goalPct()}%</span><span class="d">al ${Dates.fmt(p.targetDateISO)}</span></div>
       </div>
       <div class="row mt20" style="justify-content:center; gap:8px; flex-wrap:wrap">
         <span class="pill ${trend !== null && trend < 0 ? "up" : "flat"}">${trend === null ? "Registrá tu peso" : (trend <= 0 ? "▼" : "▲") + " " + Math.abs(trend).toFixed(1) + " kg esta semana"}</span>
         <span class="pill up">${streak} ${streak === 1 ? "entreno" : "entrenos"} seguidos</span>
-        <span class="pill ${coke > 0 ? "up" : "flat"}">${coke} ${coke === 1 ? "día" : "días"} sin Coca-Cola</span>
+        ${Cfg.hasCoke ? `<span class="pill ${coke > 0 ? "up" : "flat"}">${coke} ${coke === 1 ? "día" : "días"} sin Coca-Cola</span>` : ""}
       </div>
     </div>
 
-    <h2>Dominadas</h2>
+    ${Cfg.pullups ? `<h2>Dominadas</h2>
     <div class="card" data-go="entreno:dominadas" style="cursor:pointer">
       <div class="row">
         <div class="metric"><span class="n">${Pullup.bestReps()}</span><span class="u">reps estrictas</span></div>
         <div class="metric"><span class="n">${Pullup.bestAssist()}</span><span class="u">kg de asistencia</span></div>
       </div>
-      <p class="dimtext mt14">Objetivo: ${CONFIG.goal.pullupTarget} en una sola serie, sin asistencia.</p>
-    </div>
+      <p class="dimtext mt14">Objetivo: ${Cfg.goal.pullupTarget} en una sola serie, sin asistencia.</p>
+    </div>` : ""}
 
     <h2>${isTraining || doneToday ? "Entrenamiento de hoy" : "Próximo entrenamiento"}</h2>
     <div class="card">
@@ -1731,7 +1739,7 @@ Screens.hoy = function (root) {
 
     <h2>Todos los días</h2>
     <div class="card">
-      ${CONFIG.daily.map(d => `
+      ${Cfg.daily.map(d => `
         <div class="item" data-daily="${d.id}" role="button" tabindex="0">
           <div class="ico">${d.icon}</div>
           <div class="body"><div class="name">${d.name}</div><div class="meta">${d.meta}</div></div>
@@ -1783,14 +1791,14 @@ Screens.entreno = function (root, sub) {
     <p class="sub">${Plan.weekLabel()}</p>
     <div class="seg mt14" role="tablist">
       <button role="tab" data-v="sesion" class="${view==="sesion"?"active":""}">Sesión</button>
-      <button role="tab" data-v="dominadas" class="${view==="dominadas"?"active":""}">Dominadas</button>
+      ${Cfg.pullups ? `<button role="tab" data-v="dominadas" class="${view==="dominadas"?"active":""}">Dominadas</button>` : ""}
       <button role="tab" data-v="historial" class="${view==="historial"?"active":""}">Historial</button>
     </div>
     <div id="subview"></div>
   </div>`;
   root.querySelectorAll("[data-v]").forEach(b => b.onclick = () => Router.go("entreno", b.dataset.v));
   const sv = root.querySelector("#subview");
-  if (view === "dominadas") return Subviews.dominadas(sv);
+  if (view === "dominadas" && Cfg.pullups) return Subviews.dominadas(sv);
   if (view === "historial") return Subviews.historial(sv);
   Subviews.sesion(sv);
 };
@@ -1834,7 +1842,7 @@ Subviews.sesion = function (root) {
         <button class="btn ghost mt14" data-force>Registrar sesión de todos modos</button>
       </div>` : ""}
     <div class="field" style="margin:4px 0 8px"><label>¿Qué sesión hiciste / hacés hoy?</label>
-      <select id="pick"><option value="">Según el plan</option>${Object.entries(CONFIG.plan.sessions).map(([id, x]) => `<option value="${id}" ${picked && picked.id === id ? "selected" : ""}>${UI.esc(x.name)}</option>`).join("")}</select></div>
+      <select id="pick"><option value="">Según el plan</option>${Object.entries(Cfg.plan.sessions).map(([id, x]) => `<option value="${id}" ${picked && picked.id === id ? "selected" : ""}>${UI.esc(x.name)}</option>`).join("")}</select></div>
     ${sess ? `<h2>${sess.name}${isTraining || picked ? "" : " · próxima"}</h2>
       <p class="dimtext small" style="margin:-4px 0 12px">${sess.sub || ""}</p>` : ""}
     <div id="exlist" ${hidden ? 'style="display:none"' : ""}>
@@ -1896,7 +1904,7 @@ Subviews.sesion = function (root) {
 
 Subviews.dominadas = function (root) {
   const best = Pullup.bestReps();
-  const target = CONFIG.goal.pullupTarget;
+  const target = Cfg.goal.pullupTarget;
   const hist = Pullup.repsHistory();
   const ah = Pullup.assistHistory();
   const bestA = Pullup.bestAssist();
@@ -1919,7 +1927,7 @@ Subviews.dominadas = function (root) {
     <h2>Dominadas estrictas</h2>
     <div class="card">
       ${hist.length >= 2 ? UI.lineChart(hist.slice(-14).map(h => ({ y: h.reps, label: Dates.fmt(h.date) })), { color: "var(--violet)", goal: target, fmt: v => Math.round(v) + "" })
-        : `<p class="dimtext small">Tu punto de partida es de ${CONFIG.baseline.pullupReps} reps por serie. Registrá tus intentos de cada sesión y acá aparece la evolución.</p>`}
+        : `<p class="dimtext small">Tu punto de partida es de ${Cfg.baseline.pullupReps} reps por serie. Registrá tus intentos de cada sesión y acá aparece la evolución.</p>`}
     </div>
 
     <h2>Cómo progresar</h2>
@@ -1978,7 +1986,7 @@ Screens.comidas = function (root) {
     ${sections.map(sec => `
       <h2>${sec.icon} ${sec.name}</h2>
       <div class="card">
-        ${CONFIG.meals[sec.id].map(m => {
+        ${Cfg.meals[sec.id].map(m => {
           const on = (day[sec.id] || []).includes(m.id);
           return `
           <div class="item" data-meal="${sec.id}:${m.id}" role="button" tabindex="0">
@@ -2016,11 +2024,11 @@ Screens.habitos = function (root) {
     <p class="sub">${Dates.fmtLong(today)}</p>
     <h2>Sumá todos los días</h2>
     <div class="card">
-      ${CONFIG.habits.filter(h => h.kind === "good").map(h => Screens.habitos._habitRow(h, day)).join("")}
+      ${Cfg.habits.filter(h => h.kind === "good").map(h => Screens.habitos._habitRow(h, day)).join("")}
     </div>
     <h2>Bajo control</h2>
     <div class="card">
-      ${CONFIG.habits.filter(h => h.kind === "avoid").map(h => Screens.habitos._habitRow(h, day)).join("")}
+      ${Cfg.habits.filter(h => h.kind === "avoid").map(h => Screens.habitos._habitRow(h, day)).join("")}
     </div>
     <p class="dimtext small center mt8">Los de arriba suman racha al marcarlos.<br>Coca-Cola y vino suman racha cada día que NO los marcás.</p>
   </div>`;
@@ -2113,7 +2121,7 @@ Subviews.medidas = function (root, selected) {
   root.innerHTML = `
     <div class="card">
       <div class="seg" style="margin-bottom:14px">
-        ${CONFIG.measures.map(m => `<button data-m="${m.id}" class="${sel===m.id?"active":""}" style="font-size:11.5px; padding:8px 2px">${m.name}</button>`).join("")}
+        ${Cfg.measures.map(m => `<button data-m="${m.id}" class="${sel===m.id?"active":""}" style="font-size:11.5px; padding:8px 2px">${m.name}</button>`).join("")}
       </div>
       ${UI.lineChart(series.slice(-15), { color: "var(--coral)", fmt: v => v.toFixed(0) })}
       <button class="btn ghost mt14" data-add>Registrar medidas</button>
@@ -2121,7 +2129,7 @@ Subviews.medidas = function (root, selected) {
     ${last ? `
     <h2>Última medición · ${Dates.fmt(last.date)}</h2>
     <div class="grid3">
-      ${CONFIG.measures.map(m => last[m.id] != null ? `
+      ${Cfg.measures.map(m => last[m.id] != null ? `
         <div class="stat" style="padding:13px">
           <div class="lbl">${m.name}</div>
           <div class="metric"><span class="n" style="font-size:21px">${last[m.id]}</span><span class="u">cm</span></div>
@@ -2260,7 +2268,7 @@ const Sheets = {
     const last = [...Store.s.measurements].sort((a,b)=>a.date<b.date?-1:1).pop() || {};
     UI.openSheet(`
       <h3>Medidas de hoy (cm)</h3>
-      ${CONFIG.measures.map(m => `
+      ${Cfg.measures.map(m => `
         <div class="field">
           <label>${m.name}</label>
           <input type="number" inputmode="decimal" step="0.5" data-mid="${m.id}" value="${last[m.id] ?? ""}" placeholder="—">
@@ -2397,7 +2405,7 @@ const Sheets = {
         else UI.toast("Ejercicio guardado ✓");
         if (exId === "dominada") {
           const bestNow = Math.max(...clean.map(s => s.v));
-          const bestPrev = Math.max(CONFIG.baseline.pullupReps, ...Pullup.repsHistory().filter(h => h.date !== today).map(h => h.reps));
+          const bestPrev = Math.max(Cfg.baseline.pullupReps, ...Pullup.repsHistory().filter(h => h.date !== today).map(h => h.reps));
           if (bestNow > bestPrev) setTimeout(() => UI.toast(`Nuevo récord de dominadas: ${bestNow}`), 2400);
         }
       };
