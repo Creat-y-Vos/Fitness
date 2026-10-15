@@ -573,7 +573,7 @@ const CONFIG = {
       piernas: { name: "Piernas y core", sub: "Piernas · abdomen",
                  ex: ["prensa", "curl-femoral", "plancha", "bird-dog"] },
       full:    { name: "Full body + V", sub: "Cuerpo completo",
-                 ex: ["dominada-asist", "inclinado", "remo", "prensa", "jalon", "laterales", "fondos", "crunch"] },
+                 ex: ["dominada", "dominada-asist", "inclinado", "remo", "prensa", "jalon", "laterales", "fondos", "crunch"] },
     },
   },
 
@@ -1050,14 +1050,16 @@ const Pullup = {
   },
   // Dominadas con el plan de gimnasio: reps estrictas y asistencia
   repsHistory() {
-    return Workouts.sorted().map(w => ({ date: w.date, reps: Workouts.bestSet(w, "dominada") })).filter(h => h.reps > 0);
+    // Una serie asistida con 0 kg de asistencia es una dominada estricta
+    const strictAsAssist = w => Math.max(0, ...(w.exercises?.["dominada-asist"]?.sets || []).filter(s => !(Number(s.kg) > 0)).map(s => Number(s.v) || 0));
+    return Workouts.sorted().map(w => ({ date: w.date, reps: Math.max(Workouts.bestSet(w, "dominada") || 0, strictAsAssist(w)) })).filter(h => h.reps > 0);
   },
   bestReps() {
     return Math.max(CONFIG.baseline.pullupReps, ...this.repsHistory().map(h => h.reps));
   },
   assistHistory() {
     return Workouts.sorted().map(w => {
-      const sets = (w.exercises?.["dominada-asist"]?.sets || []).filter(s => s.v > 0);
+      const sets = (w.exercises?.["dominada-asist"]?.sets || []).filter(s => s.v > 0 && Number(s.kg) > 0);
       return { date: w.date, kg: sets.length ? Math.min(...sets.map(s => Number(s.kg) || 0)) : null };
     }).filter(h => h.kg !== null);
   },
