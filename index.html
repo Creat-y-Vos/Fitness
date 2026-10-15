@@ -1712,7 +1712,7 @@ Screens.hoy = function (root) {
   <div class="screen">
     <div class="row">
       <div>
-        <h1 class="greet">${greet}${Auth.user ? ", " + UI.esc(Auth.user.email.split("@")[0]) : ""} </h1>
+        <h1 class="greet">${greet}${p.name ? ", " + UI.esc(p.name) : ""} </h1>
         <p class="sub">${Dates.fmtLong(today)}</p>
       </div>
       <button class="btn ghost small" data-settings aria-label="Ajustes">Ajustes</button>
@@ -2496,6 +2496,7 @@ const Sheets = {
     const c = Conn.get();
     UI.openSheet(`
       <h3>Ajustes</h3>
+      <div class="field"><label>Tu nombre</label><input id="pn" maxlength="30" autocomplete="given-name" value="${UI.esc(p.name || "")}" placeholder="Cómo querés que te salude"></div>
       <div class="grid2">
         <div class="field"><label>Peso inicial (kg)</label><input type="number" step="0.1" id="sw" value="${p.startWeight}"></div>
         <div class="field"><label>Peso objetivo (kg)</label><input type="number" step="0.1" id="tw" value="${p.targetWeight}"></div>
@@ -2561,6 +2562,7 @@ const Sheets = {
           const sw = parseFloat(sheet.querySelector("#sw").value);
           const tw = parseFloat(sheet.querySelector("#tw").value);
           const td = sheet.querySelector("#td").value;
+          p.name = sheet.querySelector("#pn").value.trim().slice(0, 30);
           if (sw > 0) p.startWeight = sw;
           if (tw > 0) p.targetWeight = tw;
           if (td) p.targetDateISO = td;
