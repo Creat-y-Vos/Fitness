@@ -752,6 +752,14 @@ const Auth = (() => {
       return session.access_token;
     },
 
+    // Cambiar la contraseña de la cuenta logueada (PUT /auth/v1/user)
+    async changePassword(password) {
+      const t = await this.token();
+      const res = await fetch(base() + "/user", { method: "PUT", headers: { ...headers(), Authorization: "Bearer " + t }, body: JSON.stringify({ password }) });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j.msg || j.error_description || j.message || ("HTTP " + res.status));
+    },
+
     signOut() { persist(null); },
   };
 })();
@@ -2518,6 +2526,11 @@ const Sheets = {
           <button class="btn ghost" id="push">Sincronizar ahora</button>
           <button class="btn ghost" id="pull">Traer de la nube</button>
         </div>
+        <details class="mt8"><summary class="dimtext small">Cambiar contraseña</summary>
+          <div class="field mt8"><label>Nueva contraseña</label>
+            <input type="password" id="np" autocomplete="new-password" placeholder="mínimo 6 caracteres"></div>
+          <button class="btn ghost" id="chpw">Guardar contraseña</button>
+        </details>
         <button class="btn ghost mt8" id="logout">Cerrar sesión</button>
       ` : `
         <details class="mt8"><summary class="dimtext small">Conexión a la nube (avanzado)</summary>
@@ -2583,6 +2596,12 @@ const Sheets = {
               UI.closeSheet(); Router.render();
               UI.toast("Datos restaurados");
             } catch (e) { UI.toast("No se pudo: " + e.message); }
+          };
+          sheet.querySelector("#chpw").onclick = async () => {
+            const np = sheet.querySelector("#np").value;
+            if (np.length < 6) return UI.toast("Mínimo 6 caracteres");
+            try { await Auth.changePassword(np); sheet.querySelector("#np").value = ""; UI.toast("Contraseña actualizada"); }
+            catch (e) { UI.toast("No se pudo: " + e.message); }
           };
           sheet.querySelector("#logout").onclick = () => { UI.closeSheet(); Session.signOut(); };
         } else {
