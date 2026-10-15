@@ -36,6 +36,7 @@
   --coral: var(--accent);
   --amber: var(--text);
   --red: #FF5D5D;
+  --green: #4ADE80;
 
   --mint-dim: rgba(255,90,31,.12);
   --violet-dim: rgba(237,232,223,.08);
@@ -173,7 +174,7 @@ h2 {
   font-size: 12px; font-weight: 600;
   background: var(--elev); color: var(--dim);
 }
-.pill.up { background: var(--mint-dim); color: var(--mint); }
+.pill.up { background: rgba(74,222,128,.13); color: var(--green); }
 .pill.down { background: rgba(255,93,93,.13); color: var(--red); }
 .pill.flat { background: var(--elev); color: var(--dim); }
 
@@ -394,7 +395,7 @@ h2 + .card { border-top: none; }
 .btn.small { border-radius: 0; min-height: 40px; font-family: var(--font); font-size: 12px; font-weight: 500; text-transform: none; letter-spacing: .02em; }
 .btn.danger { background: transparent; border: 1px solid rgba(255,93,93,.4); font-family: var(--font); font-size: 13px; text-transform: none; letter-spacing: 0; }
 .pill { border-radius: 0; font-weight: 500; font-size: 11px; background: transparent; border: 1px solid var(--line-strong); }
-.pill.up { background: transparent; border-color: var(--accent); color: var(--accent); }
+.pill.up { background: transparent; border-color: rgba(74,222,128,.55); color: var(--green); }
 .pill.down { background: transparent; border-color: rgba(255,93,93,.5); }
 .pill.flat { background: transparent; }
 .tag { border-radius: 0; font-weight: 500; background: transparent !important; border: 1px solid currentColor; }
@@ -1764,9 +1765,9 @@ const Session = {
 const UI = {
   esc(s) { return String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); },
   el(html) { const t = document.createElement("template"); t.innerHTML = html.trim(); return t.content.firstElementChild; },
-  toast(msg) {
+  toast(msg, html) {
     const t = document.getElementById("toast");
-    t.textContent = msg;
+    if (html) t.innerHTML = html; else t.textContent = msg;
     t.classList.add("show");
     clearTimeout(t._h);
     t._h = setTimeout(() => t.classList.remove("show"), 2200);
@@ -1911,8 +1912,25 @@ const UI = {
       const input = st.querySelector("input");
       const step = +st.dataset.step || 1;
       const clamp = v => +Math.max(+st.dataset.min, Math.min(+st.dataset.max, v)).toFixed(2);
-      st.querySelector("[data-dec]").onclick = () => { input.value = clamp((+input.value || 0) - step); input.dispatchEvent(new Event("change")); };
-      st.querySelector("[data-inc]").onclick = () => { input.value = clamp((+input.value || 0) + step); input.dispatchEvent(new Event("change")); };
+      const bump = dir => { input.value = clamp((+input.value || 0) + dir * step); input.dispatchEvent(new Event("change")); };
+      // Mantener presionado: repite y acelera (350 ms de espera, luego 140 → 70 → 35 ms)
+      [["[data-dec]", -1], ["[data-inc]", 1]].forEach(([sel, dir]) => {
+        const btn = st.querySelector(sel);
+        let t1 = null, n = 0;
+        const stop = () => { clearTimeout(t1); t1 = null; };
+        const tickf = () => { bump(dir); n++; t1 = setTimeout(tickf, n < 6 ? 140 : n < 16 ? 70 : 35); };
+        btn.style.touchAction = "none";                       // el navegador no se queda con el gesto
+        btn.style.userSelect = "none"; btn.style.webkitUserSelect = "none"; btn.style.webkitTouchCallout = "none";
+        btn.oncontextmenu = e => e.preventDefault();
+        btn.onpointerdown = e => {
+          if (e.pointerType === "mouse" && e.button !== 0) return;
+          e.preventDefault(); stop(); n = 0; bump(dir);
+          try { btn.setPointerCapture(e.pointerId); } catch (_) {}
+          t1 = setTimeout(tickf, 350);
+        };
+        ["onpointerup", "onpointercancel", "onlostpointercapture"].forEach(ev => btn[ev] = stop);
+        btn.onclick = e => { if (e.detail === 0) bump(dir); };   // teclado (Enter/Espacio)
+      });
     });
   },
 };
@@ -2038,12 +2056,32 @@ Screens.hoy = function (root) {
     Router.go(tab, sub);
   });
   root.querySelector("[data-logweight]").onclick = () => Sheets.logWeight();
-  // Tarjeta "Tu coach": última nota semanal guardada en la base
+  // Tarjeta "Tu coach": última nota semanal. Colapsada como aviso; se abre al tocar y queda como leída.
+  const seenKey = () => "vform.noteSeen." + (Auth.user ? Auth.user.id : "x");
+  const getSeen = () => { try { return localStorage.getItem(seenKey()); } catch (_) { return null; } };
+  const setSeen = v => { try { localStorage.setItem(seenKey(), v); } catch (_) {} };
   const showNote = n => {
     const box = root.querySelector("#coachnote");
     if (!box || !n) return;
-    const paras = String(n.content).split(/\n{2,}/).map(t => `<p class="mt8" style="font-size:14.5px;line-height:1.5">${UI.esc(t).replace(/\n/g, "<br>")}</p>`).join("");
-    box.innerHTML = `<div class="card mt8" style="border-color: var(--violet)"><div class="eyebrow" style="color:var(--violet)">Tu coach · semana del ${Dates.fmt(n.week_start)}</div>${paras}</div>`;
+    const id = String(n.week_start) + "|" + String(n.created_at || "");
+    const isNew = getSeen() !== id;
+    const paras = String(n.content).split(/\n{2,}/).map(t => `<p class="mt8" style="font-size:13.5px;line-height:1.5;color:var(--text)">${UI.esc(t).replace(/\n/g, "<br>")}</p>`).join("");
+    box.innerHTML = `<div class="card mt8" style="padding:0; ${isNew ? "border-color: var(--accent)" : ""}">
+        <button type="button" data-notetoggle aria-expanded="false" style="display:flex;align-items:center;gap:10px;width:100%;padding:12px 14px;text-align:left;color:var(--text)">
+          ${isNew ? `<span style="width:8px;height:8px;border-radius:50%;background:var(--accent);flex-shrink:0"></span>` : ""}
+          <span style="flex:1;font-size:13px"><span class="eyebrow" style="${isNew ? "color:var(--accent)" : ""}">${isNew ? "Nota nueva de tu coach" : "Nota de tu coach"}</span> · semana del ${Dates.fmt(n.week_start)}</span>
+          <span data-chev style="color:var(--dim);font-size:12px">Leer ▾</span>
+        </button>
+        <div data-notebody hidden style="padding:0 14px 14px">${paras}</div>
+      </div>`;
+    const tg = box.querySelector("[data-notetoggle]"), body = box.querySelector("[data-notebody]");
+    tg.onclick = () => {
+      const open = body.hidden;
+      body.hidden = !open;
+      tg.setAttribute("aria-expanded", String(open));
+      box.querySelector("[data-chev]").textContent = open ? "Cerrar ▴" : "Leer ▾";
+      if (open && isNew) { setSeen(id); box.querySelector(".eyebrow").textContent = "Nota de tu coach"; box.querySelector(".eyebrow").style.color = ""; box.firstElementChild.style.borderColor = ""; const dot = tg.querySelector("span"); if (dot && dot.style.borderRadius) dot.remove(); }
+    };
   };
   // Tarjeta de bienvenida: mientras la cuenta no tenga plan, pide las respuestas para armarlo
   const showIntake = () => {
@@ -2646,7 +2684,7 @@ const Sheets = {
     const defV = last.length ? last[last.length - 1].v : (parseInt(ex.reps, 10) || (ex.type === "secs" ? 30 : 8));
     const sets = saved.length
       ? saved.map(s => ({ ...s }))
-      : Array.from({ length: nTarget }, () => ({ kg: defKg, v: defV }));
+      : [{ kg: defKg, v: defV }];   // arranca con una; con ＋ Serie se agregan las que hagan falta
     const unit = ex.type === "secs" ? "segundos" : "repeticiones";
 
     let tick = null, runIdx = -1, t0 = 0;
@@ -2738,7 +2776,7 @@ const Sheets = {
         w.exercises[exId] = { sets: clean, obs: document.getElementById("obs").value.trim() };
         const now = Workouts.metric(w, ex);
         Store.commit(); UI.closeSheet(); Router.render();
-        if (before && now > before) UI.toast(`▲ +${Math.round(now - before)} vs. la sesión anterior `);
+        if (before && now > before) UI.toast("", `<span style="color:var(--green)">▲</span> +${Math.round(now - before)} vs. la sesión anterior`);
         else UI.toast("Ejercicio guardado ✓");
         if (exId === "dominada") {
           const bestNow = Math.max(...clean.map(s => s.v));
