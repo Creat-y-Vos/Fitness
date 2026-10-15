@@ -1455,6 +1455,8 @@ const Photos = {
   items: null,   // [{id, date, path, url}] ordenadas de más nueva a más vieja
   _root() { return Conn.get().supabaseUrl.trim().replace(/\/+$/, ""); },
   async _h(extra) { return { ...(await Sync._headers()), ...(extra || {}) }; },
+  // DELETE no lleva cuerpo: con Content-Type JSON, Storage responde 400
+  async _hd() { const h = await Sync._headers(); delete h["Content-Type"]; return h; },
 
   async load() {
     if (!Auth.user) { this.items = []; return this.items; }
@@ -1483,15 +1485,15 @@ const Photos = {
       method: "POST", headers: await this._h(), body: JSON.stringify([{ taken_on: date, path }]),
     });
     if (!ins.ok) {
-      await fetch(`${this._root()}/storage/v1/object/progress-photos/${path}`, { method: "DELETE", headers: await this._h() }).catch(() => {});
+      await fetch(`${this._root()}/storage/v1/object/progress-photos/${path}`, { method: "DELETE", headers: await this._hd() }).catch(() => {});
       throw new Error("no se pudo registrar (HTTP " + ins.status + ")");
     }
   },
 
   async remove(item) {
-    const r1 = await fetch(`${this._root()}/storage/v1/object/progress-photos/${item.path}`, { method: "DELETE", headers: await this._h() });
+    const r1 = await fetch(`${this._root()}/storage/v1/object/progress-photos/${item.path}`, { method: "DELETE", headers: await this._hd() });
     if (!r1.ok) throw new Error("HTTP " + r1.status);
-    const r2 = await fetch(this._root() + "/rest/v1/progress_photos?id=eq." + item.id, { method: "DELETE", headers: await this._h() });
+    const r2 = await fetch(this._root() + "/rest/v1/progress_photos?id=eq." + item.id, { method: "DELETE", headers: await this._hd() });
     if (!r2.ok) throw new Error("HTTP " + r2.status);
   },
 
@@ -1605,7 +1607,7 @@ const Records = {
   async _delete(table, col, vals) {
     if (!vals.length) return;
     const list = vals.map(v => '"' + String(v).replace(/"/g, "") + '"').join(",");
-    const res = await fetch(this._root() + table + "?" + col + "=in.(" + encodeURIComponent(list) + ")", { method: "DELETE", headers: await this._h() });
+    const res = await fetch(this._root() + table + "?" + col + "=in.(" + encodeURIComponent(list) + ")", { method: "DELETE", headers: await (async () => { const h = await this._h(); delete h["Content-Type"]; return h; })() });
     if (!res.ok) throw new Error(table + ": HTTP " + res.status);
   },
 
