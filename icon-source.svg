@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="1024" height="1024"><rect width="512" height="512" fill="#141413"/><g><defs><clipPath id="cp"><circle cx="256" cy="228" r="206"/></clipPath></defs>
+<circle cx="256" cy="228" r="206" fill="#FF5A1F"/>
+<g clip-path="url(#cp)">
+ <g transform="translate(46 -8)">
+ <ellipse cx="310" cy="322" rx="26" ry="24" fill="#B27650"/>
+ <path d="M200 440 Q205 352 270 336 L352 336 Q416 352 422 440 Z" fill="#1A1A1A"/>
+ <path d="M284 336 L310 374 L336 336 Z" fill="#B27650"/>
+ <ellipse cx="243" cy="238" rx="11" ry="20" fill="#B57C55"/><ellipse cx="377" cy="238" rx="11" ry="20" fill="#B57C55"/>
+ <ellipse cx="310" cy="226" rx="68" ry="82" fill="#C58B60"/>
+ <path d="M242 208 Q236 138 310 136 Q384 138 378 208 Q372 170 310 166 Q250 170 242 208 Z" fill="#23262B"/>
+ <path d="M242 208 Q240 178 258 160 L268 192 Z M378 208 Q380 178 362 160 L352 192 Z" fill="#A3A6AB"/>
+ <path d="M246 255 Q252 324 310 326 Q368 324 374 255 Q358 276 310 274 Q262 276 246 255 Z" fill="#BDBDB8"/>
+ <ellipse cx="310" cy="269" rx="34" ry="9" fill="#C9C9C4"/>
+ <path d="M276 280 Q310 322 344 280 Q310 292 276 280 Z" fill="#F7F3E8" stroke="#4A2220" stroke-width="3" stroke-linejoin="round"/>
+ <path d="M300 242 Q310 256 320 242" stroke="#9C6B47" stroke-width="4" fill="none" stroke-linecap="round"/>
+ <rect x="251" y="203" width="52" height="38" rx="9" fill="#0F0F10"/><rect x="317" y="203" width="52" height="38" rx="9" fill="#0F0F10"/>
+ <rect x="300" y="211" width="20" height="6" fill="#0F0F10"/>
+ <path d="M259 214 L275 214 M325 214 L341 214" stroke="#44525C" stroke-width="4" stroke-linecap="round"/>
+ </g>
+<g transform="translate(-14 4)"><!-- HER -->
+ <path d="M112 292 Q84 392 118 452 L190 452 L200 300 Z" fill="#A8481F"/>
+ <ellipse cx="195" cy="272" rx="92" ry="100" fill="#A8481F"/>
+ <ellipse cx="195" cy="344" rx="29" ry="24" fill="#E0A585"/>
+ <path d="M92 452 Q98 372 160 352 L232 352 Q296 372 302 452 Z" fill="#EBB899"/>
+ <path d="M122 452 Q126 392 158 374 Q195 416 232 374 Q266 392 270 452 Z" fill="#161616"/>
+ <path d="M138 352 L150 376 L168 372 L158 352 Z M252 352 L240 376 L222 372 L232 352 Z" fill="#161616"/>
+ <ellipse cx="195" cy="262" rx="76" ry="86" fill="#EEBFA2"/>
+ <path d="M117 258 Q108 164 195 160 Q282 164 273 258 Q266 206 200 198 Q126 206 117 258 Z" fill="#B9521F"/>
+ <path d="M195 160 Q186 180 168 196" stroke="#8E3A14" stroke-width="4" fill="none" stroke-linecap="round"/>
+ <circle cx="120" cy="288" r="9" fill="none" stroke="#E2B04A" stroke-width="5"/>
+ <circle cx="146" cy="296" r="13" fill="#F0907F" opacity=".35"/><circle cx="244" cy="296" r="13" fill="#F0907F" opacity=".35"/>
+ <rect x="126" y="230" width="62" height="52" rx="24" fill="#3A1822"/><rect x="202" y="230" width="62" height="52" rx="24" fill="#3A1822"/>
+ <rect x="184" y="244" width="22" height="6" fill="#3A1822"/>
+ <path d="M140 244 Q150 238 168 240 M216 244 Q226 238 244 240" stroke="#7A4552" stroke-width="4" fill="none" stroke-linecap="round"/>
+ <path d="M186 292 Q195 300 204 292" stroke="#C99275" stroke-width="4" fill="none" stroke-linecap="round"/>
+ <path d="M155 304 Q195 346 235 304 Q195 318 155 304 Z" fill="#FFFFFF" stroke="#B4565F" stroke-width="5" stroke-linejoin="round"/>
+</g>
+</g>
+<text x="256" y="466" text-anchor="middle" font-family="Arial Black,Impact,DejaVu Sans,sans-serif" font-weight="900" font-size="78" letter-spacing="4" fill="#F2EFE6">FITNESS</text></g></svg>
