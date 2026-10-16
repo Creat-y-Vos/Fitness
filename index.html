@@ -491,7 +491,7 @@ code { border-radius: 0; }
 /* ==========================================================================
    CONFIG — dominio
    ========================================================================== */
-const APP_VERSION = "v11 · 16/10";   // subir junto con CACHE en sw.js
+const APP_VERSION = "v12 · 16/10";   // subir junto con CACHE en sw.js
 
 const CONFIG = {
   version: 1,
@@ -2477,11 +2477,11 @@ Subviews.fotos = async function (root) {
   const draw = (all, err) => {
     const flt = root._filter;
     // De la más vieja a la más nueva (como una línea de tiempo); `all` viene de más nueva a más vieja
-    const photos = all.filter(p => p.pose === flt).reverse();
+    const photos = all.filter(p => p.pose === flt).sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
     const idxOf = id => photos.findIndex(p => p.id === id);
     let ia = idxOf(root._cmpA), ib = idxOf(root._cmpB);
-    if (ia < 0) ia = 0;
-    if (ib < 0) ib = photos.length - 1;
+    if (ib < 0) ib = photos.length - 1;                       // Ahora: la más reciente por fecha
+    if (ia < 0) ia = Math.max(0, photos.length - 2);          // Antes: la anterior a esa
     const long = d => Dates.fmt(d, { day: "numeric", month: "short", year: "numeric" });
     const counts = Object.fromEntries(POSES.map(([id]) => [id, all.filter(p => p.pose === id).length]));
     root.innerHTML = `
