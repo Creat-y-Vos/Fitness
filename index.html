@@ -493,7 +493,7 @@ code { border-radius: 0; }
 /* ==========================================================================
    CONFIG — dominio
    ========================================================================== */
-const APP_VERSION = "v14 · 16/10";   // subir junto con CACHE en sw.js
+const APP_VERSION = "v15 · 16/10";   // subir junto con CACHE en sw.js
 
 const CONFIG = {
   version: 1,
@@ -763,6 +763,26 @@ const Auth = (() => {
       const res = await fetch(base() + "/user", { method: "PUT", headers: { ...headers(), Authorization: "Bearer " + t }, body: JSON.stringify({ password }) });
       const j = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(j.msg || j.error_description || j.message || ("HTTP " + res.status));
+    },
+
+    // Mail con link para elegir una contraseña nueva
+    async recover(email) {
+      const back = encodeURIComponent(location.origin + location.pathname);
+      const res = await fetch(base() + "/recover?redirect_to=" + back, { method: "POST", headers: headers(), body: JSON.stringify({ email }) });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j.msg || j.error_description || j.message || ("HTTP " + res.status));
+    },
+
+    // Al volver del link del mail (…#access_token=…&type=recovery) abre la sesión
+    async adoptRecovery(hash) {
+      const q = new URLSearchParams(hash.replace(/^#/, ""));
+      if (q.get("type") !== "recovery" || !q.get("access_token")) return false;
+      const at = q.get("access_token");
+      const res = await fetch(base() + "/user", { headers: { ...headers(), Authorization: "Bearer " + at } });
+      const u = await res.json().catch(() => ({}));
+      if (!res.ok || !u.id) throw new Error("El link venció. Pedí otro.");
+      persist({ access_token: at, refresh_token: q.get("refresh_token") || "", expires_at: Date.now() + (parseInt(q.get("expires_in") || "3600", 10) - 60) * 1000, user: { id: u.id, email: u.email } });
+      return true;
     },
 
     signOut() { persist(null); },
@@ -1702,7 +1722,8 @@ const Gate = {
         <div class="field"><label>Email</label><input type="email" id="gem" autocomplete="email"></div>
         <div class="field"><label>Contraseña</label><input type="password" id="gpw" autocomplete="current-password" placeholder="mínimo 6 caracteres"></div>
         <button class="btn mint" id="glogin">Entrar</button>
-        <p class="dimtext small center mt14"><a href="#" id="gsignup" style="color:var(--dim)">Crear cuenta (primera vez)</a></p>
+        <p class="dimtext small center mt14"><a href="#" id="gforgot" style="color:var(--dim)">Olvidé mi contraseña</a></p>
+        <p class="dimtext small center mt8"><a href="#" id="gsignup" style="color:var(--dim)">Crear cuenta (primera vez)</a></p>
         <p class="small center mt8" id="gmsg" style="color:var(--amber);min-height:18px"></p>
       </div></div>`);
     document.body.appendChild(g);
@@ -1719,6 +1740,14 @@ const Gate = {
         Gate.hide();
         await Session.afterLogin();
       } catch (e) { msg("No se pudo: " + e.message); }
+    };
+    g.querySelector("#gforgot").onclick = async e => {
+      e.preventDefault();
+      const email = g.querySelector("#gem").value.trim();
+      if (!email) return msg("Poné tu email arriba y volvé a tocar");
+      msg("Un segundo…");
+      try { await Auth.recover(email); msg("Listo. Si el email existe, te llegó un mail con el link (mirá también spam)."); }
+      catch (err) { msg("No se pudo: " + err.message); }
     };
     g.querySelector("#glogin").onclick = () => go("login");
     g.querySelector("#gsignup").onclick = e => { e.preventDefault(); go("signup"); };
@@ -3102,6 +3131,30 @@ const Router = (() => {
   }
   if (!Storage.persistent) {
     setTimeout(() => UI.toast("Vista previa: los datos no se guardan acá"), 800);
+  }
+
+  // Link de "olvidé mi contraseña": abre sesión y pide la contraseña nueva
+  if (/type=recovery/.test(location.hash)) {
+    const h = location.hash;
+    history.replaceState(null, "", location.pathname + location.search);
+    Auth.adoptRecovery(h).then(async ok => {
+      if (!ok) return;
+      Gate.hide();
+      await Session.afterLogin();
+      UI.openSheet(`
+        <h3>Elegí tu contraseña nueva</h3>
+        <div class="field"><label>Contraseña nueva</label>
+          <input type="password" id="rp" autocomplete="new-password" placeholder="mínimo 6 caracteres"></div>
+        <button class="btn mint" id="rpsave">Guardar</button>`,
+        sheet => {
+          sheet.querySelector("#rpsave").onclick = async () => {
+            const np = sheet.querySelector("#rp").value;
+            if (np.length < 6) return UI.toast("Mínimo 6 caracteres");
+            try { await Auth.changePassword(np); UI.closeSheet(); UI.toast("Contraseña actualizada"); }
+            catch (e) { UI.toast("No se pudo: " + e.message); }
+          };
+        });
+    }).catch(e => UI.toast(e.message));
   }
 
   // Plan de la cuenta: primero el cacheado, después se actualiza desde el servidor
