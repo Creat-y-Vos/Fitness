@@ -491,7 +491,7 @@ code { border-radius: 0; }
 /* ==========================================================================
    CONFIG — dominio
    ========================================================================== */
-const APP_VERSION = "v9 · 16/10";   // subir junto con CACHE en sw.js
+const APP_VERSION = "v10 · 16/10";   // subir junto con CACHE en sw.js
 
 const CONFIG = {
   version: 1,
@@ -2483,10 +2483,13 @@ Subviews.fotos = async function (root) {
         <p class="dimtext">Una foto por semana, misma luz y misma pose.<br>Frente, perfil y espalda: la espalda es la que muestra la V.</p>
         <div class="field mt14" style="text-align:left"><label>Pose de la foto que vas a subir</label>
           <select id="ph-pose">${POSES.map(([id, n]) => `<option value="${id}" ${root._pose === id ? "selected" : ""}>${n}</option>`).join("")}</select></div>
+        <div class="field" style="text-align:left"><label>Fecha de la foto</label>
+          <input type="date" id="ph-date" max="${Dates.todayKey()}" value="${root._date || Dates.todayKey()}"></div>
         <label class="btn ghost" style="display:flex">
           Agregar foto
-          <input type="file" accept="image/*" hidden data-photo>
+          <input type="file" accept="image/*" multiple hidden data-photo>
         </label>
+        <p class="dimtext small mt8" style="text-align:left">Para fotos viejas, poné la fecha en que se sacaron antes de subirlas. Si elegís varias a la vez, todas llevan esa fecha.</p>
         <p class="dimtext small mt14">Se guardan en tu cuenta, en un espacio privado: solo vos las ves.</p>
       </div>
       ${err ? `<p class="dimtext small center mt14">${UI.esc(err)}</p>` : ""}
@@ -2522,17 +2525,24 @@ Subviews.fotos = async function (root) {
     }
     root.querySelector("#ph-pose").onchange = e => { root._pose = e.target.value; root._filter = e.target.value; draw(Photos.items || []); };
     root.querySelectorAll("[data-flt]").forEach(b => b.onclick = () => { root._filter = b.dataset.flt; root._pose = b.dataset.flt; draw(Photos.items || []); });
+    root.querySelector("#ph-date").onchange = e => { root._date = e.target.value || null; };
     root.querySelector("[data-photo]").onchange = async e => {
-      const file = e.target.files[0];
-      if (!file) return;
+      const files = [...e.target.files];
+      if (!files.length) return;
+      const date = root.querySelector("#ph-date").value || Dates.todayKey();
+      if (date > Dates.todayKey()) return UI.toast("La fecha no puede ser futura");
+      let ok = 0;
       try {
-        UI.toast("Subiendo…");
-        await Photos.upload(await Photos._compress(file), Dates.todayKey(), root._pose);
-        await Photos.load();
-        root._filter = root._pose;
-        draw(Photos.items);
-        UI.toast("Foto guardada");
-      } catch (ex) { UI.toast("No se pudo guardar: " + ex.message); }
+        for (const file of files) {
+          UI.toast(`Subiendo ${ok + 1} de ${files.length}…`);
+          await Photos.upload(await Photos._compress(file), date, root._pose);
+          ok++;
+        }
+        UI.toast(ok > 1 ? `${ok} fotos guardadas` : "Foto guardada");
+      } catch (ex) { UI.toast("No se pudo guardar: " + ex.message + (ok ? ` (se guardaron ${ok})` : "")); }
+      try { await Photos.load(); } catch (_) {}
+      root._filter = root._pose;
+      draw(Photos.items || []);
     };
     root.querySelectorAll("[data-ph]").forEach(f => f.onclick = async () => {
       if (!confirm("¿Eliminar esta foto?")) return;
