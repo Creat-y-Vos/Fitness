@@ -355,9 +355,9 @@ h2 {
 /* Comparador antes/después */
 .compare { position: relative; border-radius: 16px; overflow: hidden; aspect-ratio: 3/4; background: var(--elev); user-select: none; -webkit-user-select: none; }
 .compare img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.compare .top { clip-path: inset(0 calc(100% - var(--cut, 50%)) 0 0); }
-.compare .bar { position: absolute; top: 0; bottom: 0; left: var(--cut, 50%); width: 2px; background: #fff; box-shadow: 0 0 12px rgba(0,0,0,.7); pointer-events: none; }
-.compare .cap { position: absolute; top: 8px; font-size: 10px; font-weight: 800; letter-spacing: .06em; padding: 3px 8px; border-radius: 6px; background: rgba(0,0,0,.55); pointer-events: none; }
+.compare .top { z-index: 1; clip-path: inset(0 calc(100% - var(--cut, 50%)) 0 0); }
+.compare .bar { z-index: 2; position: absolute; top: 0; bottom: 0; left: var(--cut, 50%); width: 2px; background: #fff; box-shadow: 0 0 12px rgba(0,0,0,.7); pointer-events: none; }
+.compare .cap { z-index: 2; position: absolute; top: 8px; font-size: 10px; font-weight: 800; letter-spacing: .06em; padding: 3px 8px; border-radius: 6px; background: rgba(0,0,0,.55); pointer-events: none; }
 .compare .capA { left: 8px; } .compare .capB { right: 8px; }
 input[type=range].scrub { width: 100%; margin-top: 12px; accent-color: var(--mint); }
 
@@ -491,7 +491,7 @@ code { border-radius: 0; }
 /* ==========================================================================
    CONFIG — dominio
    ========================================================================== */
-const APP_VERSION = "v10 · 16/10";   // subir junto con CACHE en sw.js
+const APP_VERSION = "v11 · 16/10";   // subir junto con CACHE en sw.js
 
 const CONFIG = {
   version: 1,
@@ -2476,7 +2476,13 @@ Subviews.fotos = async function (root) {
   root._filter = root._filter || "frente";  // pose que se ve y se compara
   const draw = (all, err) => {
     const flt = root._filter;
-    const photos = all.filter(p => p.pose === flt);   // ya vienen de más nueva a más vieja
+    // De la más vieja a la más nueva (como una línea de tiempo); `all` viene de más nueva a más vieja
+    const photos = all.filter(p => p.pose === flt).reverse();
+    const idxOf = id => photos.findIndex(p => p.id === id);
+    let ia = idxOf(root._cmpA), ib = idxOf(root._cmpB);
+    if (ia < 0) ia = 0;
+    if (ib < 0) ib = photos.length - 1;
+    const long = d => Dates.fmt(d, { day: "numeric", month: "short", year: "numeric" });
     const counts = Object.fromEntries(POSES.map(([id]) => [id, all.filter(p => p.pose === id).length]));
     root.innerHTML = `
       <div class="card center">
@@ -2499,12 +2505,18 @@ Subviews.fotos = async function (root) {
       ${photos.length >= 2 ? `
       <h2>Antes / después · ${poseName(flt)}</h2>
       <div class="card">
+        <div class="grid2" style="margin-bottom:12px">
+          <div class="field" style="margin:0"><label>Antes</label>
+            <select id="cmp-a">${photos.map((ph, i) => `<option value="${ph.id}" ${i === ia ? "selected" : ""}>${long(ph.date)}</option>`).join("")}</select></div>
+          <div class="field" style="margin:0"><label>Ahora</label>
+            <select id="cmp-b">${photos.map((ph, i) => `<option value="${ph.id}" ${i === ib ? "selected" : ""}>${long(ph.date)}</option>`).join("")}</select></div>
+        </div>
         <div class="compare" style="--cut:50%">
-          <img src="${photos[photos.length-1].url}" alt="Foto inicial" class="top">
-          <img src="${photos[0].url}" alt="Foto más reciente">
+          <img src="${photos[ia].url}" alt="Antes" class="top">
+          <img src="${photos[ib].url}" alt="Ahora">
           <div class="bar"></div>
-          <span class="cap capA">ANTES · ${Dates.fmt(photos[photos.length-1].date)}</span>
-          <span class="cap capB">AHORA · ${Dates.fmt(photos[0].date)}</span>
+          <span class="cap capA">ANTES · ${Dates.fmt(photos[ia].date)}</span>
+          <span class="cap capB">AHORA · ${Dates.fmt(photos[ib].date)}</span>
         </div>
         <input type="range" class="scrub" min="0" max="100" value="50" data-scrub aria-label="Comparar fotos">
       </div>` : ""}
@@ -2523,8 +2535,11 @@ Subviews.fotos = async function (root) {
       const box = root.querySelector(".compare");
       scrub.oninput = () => box.style.setProperty("--cut", scrub.value + "%");
     }
-    root.querySelector("#ph-pose").onchange = e => { root._pose = e.target.value; root._filter = e.target.value; draw(Photos.items || []); };
-    root.querySelectorAll("[data-flt]").forEach(b => b.onclick = () => { root._filter = b.dataset.flt; root._pose = b.dataset.flt; draw(Photos.items || []); });
+    const ca = root.querySelector("#cmp-a"), cb = root.querySelector("#cmp-b");
+    if (ca) ca.onchange = () => { root._cmpA = ca.value; draw(Photos.items || []); };
+    if (cb) cb.onchange = () => { root._cmpB = cb.value; draw(Photos.items || []); };
+    root.querySelector("#ph-pose").onchange = e => { root._pose = e.target.value; root._filter = e.target.value; root._cmpA = root._cmpB = null; draw(Photos.items || []); };
+    root.querySelectorAll("[data-flt]").forEach(b => b.onclick = () => { root._filter = b.dataset.flt; root._pose = b.dataset.flt; root._cmpA = root._cmpB = null; draw(Photos.items || []); });
     root.querySelector("#ph-date").onchange = e => { root._date = e.target.value || null; };
     root.querySelector("[data-photo]").onchange = async e => {
       const files = [...e.target.files];
