@@ -149,6 +149,22 @@ nav.tabbar button.active svg { stroke: var(--mint); }
 }
 .card + h2 { margin-top: 30px; }
 
+
+/* ---- Cámara con guía ---- */
+#cam { position: fixed; inset: 0; z-index: 9998; background: #000; color: #F2EFE6; display: flex; flex-direction: column; }
+#cam .bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; flex-wrap: wrap; }
+#cam .bar button, #cam .seg2 button { background: rgba(255,255,255,.12); color: #F2EFE6; border: 1px solid rgba(255,255,255,.25); border-radius: 8px; padding: 8px 12px; font: inherit; font-size: 13px; min-height: 40px; }
+#cam .bar button.on, #cam .seg2 button.on { background: #FF5A1F; color: #161616; border-color: #FF5A1F; }
+#cam .stage { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; padding: 0 8px; }
+#cam .frame { position: relative; max-width: 100%; max-height: 100%; background: #111; overflow: hidden; }
+#cam .frame video, #cam .frame img.shot { display: block; width: 100%; height: 100%; object-fit: cover; }
+#cam .frame img.ghost { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .35; pointer-events: none; }
+#cam .frame svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+#cam .count { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 140px; font-weight: 700; color: #fff; text-shadow: 0 4px 24px rgba(0,0,0,.7); pointer-events: none; }
+#cam .foot { padding: 12px 16px calc(14px + env(safe-area-inset-bottom)); display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap; }
+#cam .seg2 { display: flex; gap: 6px; }
+#cam .shutter { width: 76px; height: 76px; border-radius: 50%; border: 5px solid #F2EFE6; background: #FF5A1F; padding: 0; }
+#cam .hint { text-align: center; font-size: 12px; color: rgba(242,239,230,.7); padding: 0 16px 4px; }
 img.logo { width: 52px; height: 52px; border-radius: 50%; object-fit: cover; flex: none; border: 2px solid #FF5A1F; }
 h1.greet { font-size: 26px; font-weight: 700; letter-spacing: -.02em; }
 .sub { color: var(--dim); font-size: 14px; margin-top: 2px; }
@@ -493,7 +509,7 @@ code { border-radius: 0; }
 /* ==========================================================================
    CONFIG — dominio
    ========================================================================== */
-const APP_VERSION = "v15 · 16/10";   // subir junto con CACHE en sw.js
+const APP_VERSION = "v16 · 16/10";   // subir junto con CACHE en sw.js
 
 const CONFIG = {
   version: 1,
@@ -1554,6 +1570,110 @@ const Photos = {
   },
 };
 
+
+/* ---- Camera: sacar la foto desde la app con una guía para encuadrar siempre igual ---- */
+const Camera = {
+  GUIDES: {
+    frente: `<ellipse cx="150" cy="82" rx="40" ry="50"/><path d="M135 130V150M165 130V150"/><path d="M135 150Q95 152 62 174M165 150Q205 152 238 174"/><path d="M62 174Q44 250 46 345M238 174Q256 250 254 345"/><path d="M86 188Q92 262 100 345M214 188Q208 262 200 345"/>`,
+    espalda: `<ellipse cx="150" cy="82" rx="40" ry="50"/><path d="M135 130V150M165 130V150"/><path d="M135 150Q95 152 62 174M165 150Q205 152 238 174"/><path d="M62 174Q44 250 46 345M238 174Q256 250 254 345"/><path d="M86 188Q92 262 100 345M214 188Q208 262 200 345"/>`,
+    perfil: `<ellipse cx="140" cy="82" rx="34" ry="48"/><path d="M150 130Q170 200 160 345"/><path d="M122 130Q102 172 110 225Q114 285 110 345"/><ellipse cx="140" cy="168" rx="18" ry="24"/><path d="M136 190Q152 260 140 345"/>`,
+  },
+  LEVELS: `<path d="M150 20V380" stroke-dasharray="6 8" opacity=".5"/><path d="M20 170H280" stroke-dasharray="6 8"/><path d="M20 268H280" stroke-dasharray="6 8"/><path d="M20 352H280" stroke-dasharray="6 8"/>`,
+  LABELS: `<text x="24" y="164">hombros</text><text x="24" y="262">ombligo</text><text x="24" y="346">borde del short</text>`,
+
+  async open({ pose, ghostUrl, onShot }) {
+    if (!navigator.mediaDevices?.getUserMedia) return UI.toast("Este navegador no abre la cámara. Usá 'Agregar foto'.");
+    document.getElementById("cam")?.remove();
+    const st = { facing: "user", timer: 5, guide: true, ghost: !!ghostUrl, flip: false, stream: null, blob: null, busy: false };
+    const el = UI.el(`<div id="cam">
+      <div class="bar">
+        <button data-x aria-label="Cerrar">✕ Cerrar</button>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button data-g class="on">Guía</button>
+          ${ghostUrl ? `<button data-gh class="on">Foto anterior</button>` : ""}
+          ${pose === "perfil" ? `<button data-fl>Girar guía</button>` : ""}
+          <button data-sw>Cámara</button>
+        </div>
+      </div>
+      <div class="stage"><div class="frame" id="camframe" style="aspect-ratio:3/4">
+        <video playsinline muted autoplay></video>
+        ${ghostUrl ? `<img class="ghost" src="${ghostUrl}" alt="">` : ""}
+        <svg viewBox="0 0 300 400" preserveAspectRatio="xMidYMid meet" fill="none" stroke="#FF5A1F" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" font-size="11" font-family="monospace">
+          <g id="camg"><g id="camfl">${this.GUIDES[pose] || this.GUIDES.frente}</g>${this.LEVELS}<g fill="#FF5A1F" stroke="none">${this.LABELS}</g></g>
+        </svg>
+        <div class="count" hidden></div>
+      </div></div>
+      <p class="hint" id="camhint">Apoyá el celu a la altura del medio del pecho y alineá hombros, ombligo y borde del short con las líneas.</p>
+      <div class="foot" id="camfoot"></div>
+    </div>`);
+    document.body.appendChild(el);
+    const video = el.querySelector("video"), frame = el.querySelector("#camframe");
+    const stop = () => { st.stream?.getTracks().forEach(t => t.stop()); st.stream = null; };
+    const close = () => { stop(); el.remove(); };
+    const start = async () => {
+      stop();
+      try {
+        st.stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: st.facing, width: { ideal: 1440 }, height: { ideal: 1920 } } });
+        video.srcObject = st.stream; await video.play().catch(() => {});
+        video.onloadedmetadata = () => { if (video.videoWidth) frame.style.aspectRatio = video.videoWidth + "/" + video.videoHeight; };
+        if (video.videoWidth) frame.style.aspectRatio = video.videoWidth + "/" + video.videoHeight;
+      } catch (e) { close(); UI.toast("No pude abrir la cámara: dale permiso al navegador o usá 'Agregar foto'."); }
+    };
+    const foot = () => {
+      const f = el.querySelector("#camfoot");
+      if (st.blob) {
+        f.innerHTML = `<button class="btn ghost" data-retry style="min-width:130px">Repetir</button><button class="btn mint" data-save style="min-width:130px">Guardar</button>`;
+        f.querySelector("[data-retry]").onclick = () => { st.blob = null; el.querySelector("img.shot")?.remove(); video.style.display = ""; el.querySelector("#camhint").hidden = false; foot(); };
+        f.querySelector("[data-save]").onclick = async () => {
+          const b = f.querySelector("[data-save]"); b.disabled = true; b.textContent = "Guardando…";
+          try { await onShot(st.blob); close(); } catch (e) { b.disabled = false; b.textContent = "Guardar"; UI.toast("No se pudo guardar: " + e.message); }
+        };
+      } else {
+        f.innerHTML = `<div class="seg2">${[[0, "Ya"], [5, "5 s"], [10, "10 s"]].map(([n, l]) => `<button data-t="${n}" class="${st.timer === n ? "on" : ""}">${l}</button>`).join("")}</div><button class="shutter" data-shot aria-label="Sacar foto"></button>`;
+        f.querySelectorAll("[data-t]").forEach(b => b.onclick = () => { st.timer = +b.dataset.t; foot(); });
+        f.querySelector("[data-shot]").onclick = shoot;
+      }
+    };
+    const grab = () => {
+      const vw = video.videoWidth, vh = video.videoHeight;
+      if (!vw) return UI.toast("La cámara todavía no está lista");
+      const k = Math.min(1, 1280 / Math.max(vw, vh));
+      const cv = document.createElement("canvas"); cv.width = Math.round(vw * k); cv.height = Math.round(vh * k);
+      cv.getContext("2d").drawImage(video, 0, 0, cv.width, cv.height);   // sin espejo: igual que la cámara del celu
+      cv.toBlob(b => {
+        if (!b) return UI.toast("No se pudo sacar la foto");
+        st.blob = b; st.busy = false;
+        const img = document.createElement("img"); img.className = "shot"; img.src = URL.createObjectURL(b); img.alt = "Foto sacada";
+        img.style.cssText = "position:absolute;inset:0;z-index:1";
+        frame.appendChild(img);
+        el.querySelector("#camhint").hidden = true;
+        foot();
+      }, "image/jpeg", 0.85);
+    };
+    const shoot = async () => {
+      if (st.busy) return; st.busy = true;
+      const c = el.querySelector(".count");
+      for (let n = st.timer; n > 0; n--) { c.hidden = false; c.textContent = n; try { navigator.vibrate?.(30); } catch (_) {} await new Promise(r => setTimeout(r, 1000)); }
+      c.hidden = true; try { navigator.vibrate?.(80); } catch (_) {}
+      grab();
+    };
+    const sync = () => {
+      el.querySelector("#camg").style.display = st.guide ? "" : "none";
+      const gh = el.querySelector("img.ghost"); if (gh) gh.style.display = st.ghost ? "" : "none";
+      el.querySelector("#camfl").setAttribute("transform", st.flip ? "translate(300 0) scale(-1 1)" : "");
+      el.querySelector("[data-g]").classList.toggle("on", st.guide);
+      el.querySelector("[data-gh]")?.classList.toggle("on", st.ghost);
+      el.querySelector("[data-fl]")?.classList.toggle("on", st.flip);
+    };
+    el.querySelector("[data-x]").onclick = close;
+    el.querySelector("[data-g]").onclick = () => { st.guide = !st.guide; sync(); };
+    el.querySelector("[data-gh]")?.addEventListener("click", () => { st.ghost = !st.ghost; sync(); });
+    el.querySelector("[data-fl]")?.addEventListener("click", () => { st.flip = !st.flip; sync(); });
+    el.querySelector("[data-sw]").onclick = () => { st.facing = st.facing === "user" ? "environment" : "user"; start(); };
+    foot(); sync(); await start();
+  },
+};
+
 /* ---- Records: entrenos, peso y medidas viven en tablas (workouts, body_metrics).
    El dispositivo guarda una copia para andar sin conexión; la sincronización es por registro
    (merge de 3 vías contra lo último sincronizado), no un volcado completo. ---- */
@@ -2525,6 +2645,7 @@ Subviews.fotos = async function (root) {
           <select id="ph-pose">${POSES.map(([id, n]) => `<option value="${id}" ${root._pose === id ? "selected" : ""}>${n}</option>`).join("")}</select></div>
         <div class="field" style="text-align:left"><label>Fecha de la foto</label>
           <input type="date" id="ph-date" max="${Dates.todayKey()}" value="${root._date || Dates.todayKey()}"></div>
+        <button class="btn mint" id="ph-cam" style="margin-bottom:8px">Sacar foto con la cámara</button>
         <label class="btn ghost" style="display:flex">
           Agregar foto
           <input type="file" accept="image/*" multiple hidden data-photo>
@@ -2575,6 +2696,21 @@ Subviews.fotos = async function (root) {
     root.querySelector("#ph-pose").onchange = e => { root._pose = e.target.value; root._filter = e.target.value; root._cmpA = root._cmpB = null; draw(Photos.items || []); };
     root.querySelectorAll("[data-flt]").forEach(b => b.onclick = () => { root._filter = b.dataset.flt; root._pose = b.dataset.flt; root._cmpA = root._cmpB = null; draw(Photos.items || []); });
     root.querySelector("#ph-date").onchange = e => { root._date = e.target.value || null; };
+    root.querySelector("#ph-cam").onclick = () => {
+      const date = root.querySelector("#ph-date").value || Dates.todayKey();
+      if (date > Dates.todayKey()) return UI.toast("La fecha no puede ser futura");
+      const last = all.filter(p => p.pose === root._pose).sort((a, b) => a.date < b.date ? 1 : -1)[0];
+      Camera.open({
+        pose: root._pose, ghostUrl: last?.url || "",
+        onShot: async blob => {
+          await Photos.upload(blob, date, root._pose);
+          UI.toast("Foto guardada");
+          try { await Photos.load(); } catch (_) {}
+          root._filter = root._pose; root._cmpA = root._cmpB = null;
+          draw(Photos.items || []);
+        },
+      });
+    };
     root.querySelector("[data-photo]").onchange = async e => {
       const files = [...e.target.files];
       if (!files.length) return;
