@@ -491,6 +491,8 @@ code { border-radius: 0; }
 /* ==========================================================================
    CONFIG — dominio
    ========================================================================== */
+const APP_VERSION = "v8 · 16/10";   // subir junto con CACHE en sw.js
+
 const CONFIG = {
   version: 1,
 
@@ -2900,6 +2902,7 @@ const Sheets = {
         <label class="btn ghost" style="display:flex">⬆ Importar<input type="file" accept=".json" hidden id="imp"></label>
       </div>
       <button class="btn danger mt14" id="wipe">Borrar todos los datos</button>
+      <p class="dimtext small center mt14">Versión ${APP_VERSION}</p>
       ${!Storage.persistent ? `<p class="dimtext small center mt14">Este entorno no permite guardar de forma permanente. Abrí el archivo en tu navegador o subilo a un hosting para que los datos persistan.</p>` : ""}`,
       sheet => {
         sheet.querySelector("#psave").onclick = () => {
