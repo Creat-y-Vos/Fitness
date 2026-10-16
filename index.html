@@ -149,6 +149,7 @@ nav.tabbar button.active svg { stroke: var(--mint); }
 }
 .card + h2 { margin-top: 30px; }
 
+img.logo { width: 52px; height: 52px; border-radius: 50%; object-fit: cover; flex: none; border: 2px solid #FF5A1F; }
 h1.greet { font-size: 26px; font-weight: 700; letter-spacing: -.02em; }
 .sub { color: var(--dim); font-size: 14px; margin-top: 2px; }
 
@@ -492,7 +493,7 @@ code { border-radius: 0; }
 /* ==========================================================================
    CONFIG — dominio
    ========================================================================== */
-const APP_VERSION = "v13 · 16/10";   // subir junto con CACHE en sw.js
+const APP_VERSION = "v14 · 16/10";   // subir junto con CACHE en sw.js
 
 const CONFIG = {
   version: 1,
@@ -1696,7 +1697,7 @@ const Gate = {
     document.body.style.overflow = "hidden";
     g = UI.el(`<div id="gate" style="position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px;overflow:auto">
       <div style="width:100%;max-width:360px">
-        <h1 class="greet" style="margin-bottom:10px">Fitness</h1>
+        <img class="logo" src="logo.jpg" alt="Fitness" style="width:112px;height:112px;display:block;margin:0 auto 14px"><h1 class="greet" style="margin-bottom:10px;text-align:center">Fitness</h1>
         <p class="dimtext" style="margin-bottom:22px">Entrá para ver tu plan y tu progreso.</p>
         <div class="field"><label>Email</label><input type="email" id="gem" autocomplete="email"></div>
         <div class="field"><label>Contraseña</label><input type="password" id="gpw" autocomplete="current-password" placeholder="mínimo 6 caracteres"></div>
@@ -1970,9 +1971,12 @@ Screens.hoy = function (root) {
   root.innerHTML = `
   <div class="screen">
     <div class="row">
-      <div>
-        <h1 class="greet">${greet}${p.name ? ", " + UI.esc(p.name) : ""} </h1>
-        <p class="sub">${Dates.fmtLong(today)}</p>
+      <div style="display:flex;align-items:center;gap:12px;min-width:0">
+        <img class="logo" src="logo.jpg" alt="Fitness" width="52" height="52">
+        <div style="min-width:0">
+          <h1 class="greet">${greet}${p.name ? ", " + UI.esc(p.name) : ""} </h1>
+          <p class="sub">${Dates.fmtLong(today)}</p>
+        </div>
       </div>
       <button class="btn ghost small" data-settings aria-label="Ajustes">Ajustes</button>
     </div>
@@ -2881,7 +2885,7 @@ const Sheets = {
     const p = Store.s.profile;
     const c = Conn.get();
     UI.openSheet(`
-      <h3>Ajustes</h3>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px"><img class="logo" src="logo.jpg" alt="" width="52" height="52"><h3 style="margin:0">Ajustes</h3></div>
       <div class="field"><label>Tu nombre</label><input id="pn" maxlength="30" autocomplete="given-name" value="${UI.esc(p.name || "")}" placeholder="Cómo querés que te salude"></div>
       <div class="grid2">
         <div class="field"><label>Peso inicial (kg)</label><input type="number" step="0.1" id="sw" value="${p.startWeight}"></div>
