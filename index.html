@@ -509,7 +509,7 @@ code { border-radius: 0; }
 /* ==========================================================================
    CONFIG — dominio
    ========================================================================== */
-const APP_VERSION = "v16 · 16/10";   // subir junto con CACHE en sw.js
+const APP_VERSION = "v17 · 18/10";   // subir junto con CACHE en sw.js
 
 const CONFIG = {
   version: 1,
@@ -2192,7 +2192,17 @@ Screens.hoy = function (root) {
         </div>`).join("")}
     </div>
 
-    <button class="btn ghost" data-logweight>Registrar peso de hoy</button>
+    ${(() => {
+      const rec = [];
+      for (let i = 0; i < 7; i++) { const k = Dates.addDays(today, -i); (Store.s.dailyDone[k]?.extra || []).forEach(x => rec.push({ ...x, date: k })); }
+      return rec.length ? `<h2>Otras actividades</h2><div class="card">${rec.map(x => `
+        <div class="item" data-extra="${x.date}|${x.id}" role="button" tabindex="0" aria-label="Borrar actividad">
+          <div class="body"><div class="name">${UI.esc(Sheets.ACT[x.type] || x.type)} · ${x.min} min</div><div class="meta">${Dates.fmt(x.date, { weekday: "long", day: "numeric", month: "short" })} · esfuerzo ${x.rpe}/10 · tocá para borrar</div></div>
+        </div>`).join("")}</div>` : "";
+    })()}
+
+    <button class="btn ghost" data-logactivity>Registrar fútbol u otra actividad</button>
+    <button class="btn ghost mt8" data-logweight>Registrar peso de hoy</button>
   </div>`;
 
   root.querySelectorAll("[data-daily]").forEach(el => {
@@ -2212,6 +2222,15 @@ Screens.hoy = function (root) {
     Router.go(tab, sub);
   });
   root.querySelector("[data-logweight]").onclick = () => Sheets.logWeight();
+  root.querySelector("[data-logactivity]").onclick = () => Sheets.activity();
+  root.querySelectorAll("[data-extra]").forEach(el => el.onclick = () => {
+    const [date, id] = el.dataset.extra.split("|");
+    if (!confirm("¿Borrar esta actividad?")) return;
+    const day = { ...(Store.s.dailyDone[date] || {}) };
+    day.extra = (day.extra || []).filter(x => x.id !== id);
+    if (!day.extra.length) delete day.extra;
+    Store.s.dailyDone[date] = day; Store.commit(); Router.render();
+  });
   // Tarjeta "Tu coach": última nota semanal. Colapsada como aviso; se abre al tocar y queda como leída.
   const seenKey = () => "vform.noteSeen." + (Auth.user ? Auth.user.id : "x");
   const getSeen = () => { try { return localStorage.getItem(seenKey()); } catch (_) { return null; } };
@@ -2789,6 +2808,33 @@ Subviews.stats = function (root) {
    Sheets — modales de captura de datos
    ========================================================================== */
 const Sheets = {
+  ACT: { futbol: "Fútbol", trote: "Trote / caminata", bici: "Bici", otro: "Otra actividad" },
+  activity() {
+    const today = Dates.todayKey();
+    UI.openSheet(`
+      <h3>Registrar actividad</h3>
+      <div class="field"><label>Qué hiciste</label>
+        <select id="at-type">${Object.entries(Sheets.ACT).map(([k, n]) => `<option value="${k}">${n}</option>`).join("")}</select></div>
+      <div class="field"><label>Cuántos minutos</label>
+        <input type="number" inputmode="numeric" id="at-min" min="5" max="300" value="60"></div>
+      <div class="field"><label>Esfuerzo (1 suave · 10 al límite)</label>
+        <select id="at-rpe">${[1,2,3,4,5,6,7,8,9,10].map(n => `<option value="${n}" ${n === 7 ? "selected" : ""}>${n}</option>`).join("")}</select></div>
+      <div class="field"><label>Fecha</label><input type="date" id="at-date" max="${today}" value="${today}"></div>
+      <button class="btn mint" id="at-save">Guardar</button>`,
+      sheet => {
+        sheet.querySelector("#at-save").onclick = () => {
+          const min = parseInt(sheet.querySelector("#at-min").value, 10);
+          const date = sheet.querySelector("#at-date").value || today;
+          if (!min || min < 5 || min > 300) return UI.toast("Poné entre 5 y 300 minutos");
+          if (date > today) return UI.toast("La fecha no puede ser futura");
+          const day = { ...(Store.s.dailyDone[date] || {}) };
+          day.extra = [...(day.extra || []), { id: "x" + Date.now().toString(36), type: sheet.querySelector("#at-type").value, min, rpe: +sheet.querySelector("#at-rpe").value }];
+          Store.s.dailyDone[date] = day; Store.commit(); UI.closeSheet(); Router.render();
+          UI.toast("Actividad registrada");
+        };
+      });
+  },
+
   logWeight() {
     const cur = Progress.currentKg();
     UI.openSheet(`
