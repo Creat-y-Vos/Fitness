@@ -509,7 +509,7 @@ code { border-radius: 0; }
 /* ==========================================================================
    CONFIG — dominio
    ========================================================================== */
-const APP_VERSION = "v17 · 18/10";   // subir junto con CACHE en sw.js
+const APP_VERSION = "v18 · 20/10";   // subir junto con CACHE en sw.js
 
 const CONFIG = {
   version: 1,
@@ -2197,7 +2197,7 @@ Screens.hoy = function (root) {
       for (let i = 0; i < 7; i++) { const k = Dates.addDays(today, -i); (Store.s.dailyDone[k]?.extra || []).forEach(x => rec.push({ ...x, date: k })); }
       return rec.length ? `<h2>Otras actividades</h2><div class="card">${rec.map(x => `
         <div class="item" data-extra="${x.date}|${x.id}" role="button" tabindex="0" aria-label="Borrar actividad">
-          <div class="body"><div class="name">${UI.esc(Sheets.ACT[x.type] || x.type)} · ${x.min} min</div><div class="meta">${Dates.fmt(x.date, { weekday: "long", day: "numeric", month: "short" })} · esfuerzo ${x.rpe}/10 · tocá para borrar</div></div>
+          <div class="body"><div class="name">${UI.esc(Sheets.actText(x))}</div><div class="meta">${Dates.fmt(x.date, { weekday: "long", day: "numeric", month: "short" })} · esfuerzo ${x.rpe}/10 · tocá para borrar</div></div>
         </div>`).join("")}</div>` : "";
     })()}
 
@@ -2207,6 +2207,12 @@ Screens.hoy = function (root) {
 
   root.querySelectorAll("[data-daily]").forEach(el => {
     const act = () => {
+      if (el.dataset.daily === "caminata" && !(Store.s.dailyDone[today] || {}).caminata) return Sheets.activity({ type: "caminata", min: 45, rpe: 3, skip: true });
+      if (el.dataset.daily === "caminata") {
+        (Store.s.dailyDone[today]?.extra || []).filter(x => x.type === "caminata").forEach(x => Sheets.delExtra(today, x.id));
+        const d = { ...(Store.s.dailyDone[today] || {}) }; delete d.caminata; Store.s.dailyDone[today] = d;
+        Store.commit(); Router.render(); return;
+      }
       const day = { ...(Store.s.dailyDone[today] || {}) };
       day[el.dataset.daily] = !day[el.dataset.daily];
       if (!day[el.dataset.daily]) delete day[el.dataset.daily];
@@ -2226,10 +2232,7 @@ Screens.hoy = function (root) {
   root.querySelectorAll("[data-extra]").forEach(el => el.onclick = () => {
     const [date, id] = el.dataset.extra.split("|");
     if (!confirm("¿Borrar esta actividad?")) return;
-    const day = { ...(Store.s.dailyDone[date] || {}) };
-    day.extra = (day.extra || []).filter(x => x.id !== id);
-    if (!day.extra.length) delete day.extra;
-    Store.s.dailyDone[date] = day; Store.commit(); Router.render();
+    Sheets.delExtra(date, id); Store.commit(); Router.render();
   });
   // Tarjeta "Tu coach": última nota semanal. Colapsada como aviso; se abre al tocar y queda como leída.
   const seenKey = () => "vform.noteSeen." + (Auth.user ? Auth.user.id : "x");
@@ -2441,7 +2444,12 @@ Subviews.dominadas = function (root) {
 
 Subviews.historial = function (root) {
   const list = Workouts.sorted().slice().reverse();
-  root.innerHTML = !list.length
+  const extras = Sheets.allExtras();
+  const extraHtml = extras.length ? `<h2>Caminatas y otras actividades</h2><div class="card">${extras.map(x => `
+        <div class="item" data-xdel="${x.date}|${x.id}" role="button" tabindex="0" aria-label="Borrar actividad">
+          <div class="body"><div class="name">${UI.esc(Sheets.actText(x))}</div><div class="meta">${Dates.fmt(x.date, { weekday: "long", day: "numeric", month: "short" })} · esfuerzo ${x.rpe}/10 · tocá para borrar</div></div>
+        </div>`).join("")}</div><h2>Sesiones de gimnasio</h2>` : "";
+  root.innerHTML = extraHtml + (!list.length
     ? `<div class="empty">Tu primera sesión va a aparecer acá.<br>Cada serie que anotes es la referencia de la próxima.</div>`
     : list.map(w => `
         <div class="card">
@@ -2458,7 +2466,12 @@ Subviews.historial = function (root) {
               return sets?.length ? `<span class="pill">${ex.name}: ${Ex.setText(ex, sets)}</span>` : "";
             }).join("")}
           </div>
-        </div>`).join("");
+        </div>`).join(""));
+  root.querySelectorAll("[data-xdel]").forEach(el => el.onclick = () => {
+    const [date, id] = el.dataset.xdel.split("|");
+    if (!confirm("¿Borrar esta actividad?")) return;
+    Sheets.delExtra(date, id); Store.commit(); Router.render();
+  });
   root.querySelectorAll("[data-del]").forEach(b => b.onclick = () => {
     if (!confirm("¿Eliminar esta sesión?")) return;
     Store.s.workouts = Store.s.workouts.filter(w => w.id !== b.dataset.del);
@@ -2808,19 +2821,38 @@ Subviews.stats = function (root) {
    Sheets — modales de captura de datos
    ========================================================================== */
 const Sheets = {
-  ACT: { futbol: "Fútbol", trote: "Trote / caminata", bici: "Bici", otro: "Otra actividad" },
-  activity() {
+  ACT: { futbol: "Fútbol", caminata: "Caminata", trote: "Trote", bici: "Bici", otro: "Otra actividad" },
+  actText(x) {
+    let t = `${Sheets.ACT[x.type] || x.type} · ${x.min} min`;
+    if (x.km) { const p = x.min / x.km; t = `${Sheets.ACT[x.type] || x.type} · ${String(x.km).replace(".", ",")} km · ${x.min} min · ${Math.floor(p)}:${String(Math.round((p % 1) * 60)).padStart(2, "0")} min/km`.replace(":60 ", ":59 "); }
+    return t;
+  },
+  allExtras() {
+    const out = [];
+    Object.keys(Store.s.dailyDone).sort().reverse().forEach(k => (Store.s.dailyDone[k]?.extra || []).forEach(x => out.push({ ...x, date: k })));
+    return out;
+  },
+  delExtra(date, id) {
+    const day = { ...(Store.s.dailyDone[date] || {}) };
+    day.extra = (day.extra || []).filter(x => x.id !== id);
+    if (!day.extra.length) delete day.extra;
+    if (!day.extra?.some(x => x.type === "caminata")) delete day.caminata;
+    Store.s.dailyDone[date] = day;
+  },
+  activity(o = {}) {
     const today = Dates.todayKey();
     UI.openSheet(`
       <h3>Registrar actividad</h3>
       <div class="field"><label>Qué hiciste</label>
-        <select id="at-type">${Object.entries(Sheets.ACT).map(([k, n]) => `<option value="${k}">${n}</option>`).join("")}</select></div>
+        <select id="at-type">${Object.entries(Sheets.ACT).map(([k, n]) => `<option value="${k}" ${k === o.type ? "selected" : ""}>${n}</option>`).join("")}</select></div>
       <div class="field"><label>Cuántos minutos</label>
-        <input type="number" inputmode="numeric" id="at-min" min="5" max="300" value="60"></div>
+        <input type="number" inputmode="numeric" id="at-min" min="5" max="300" value="${o.min || 60}"></div>
+      <div class="field"><label>Distancia en km (opcional)</label>
+        <input type="number" inputmode="decimal" id="at-km" min="0" max="200" step="0.1" placeholder="ej. 5"></div>
       <div class="field"><label>Esfuerzo (1 suave · 10 al límite)</label>
-        <select id="at-rpe">${[1,2,3,4,5,6,7,8,9,10].map(n => `<option value="${n}" ${n === 7 ? "selected" : ""}>${n}</option>`).join("")}</select></div>
+        <select id="at-rpe">${[1,2,3,4,5,6,7,8,9,10].map(n => `<option value="${n}" ${n === (o.rpe || 7) ? "selected" : ""}>${n}</option>`).join("")}</select></div>
       <div class="field"><label>Fecha</label><input type="date" id="at-date" max="${today}" value="${today}"></div>
-      <button class="btn mint" id="at-save">Guardar</button>`,
+      <button class="btn mint" id="at-save">Guardar</button>${o.skip ? `<button class="btn ghost mt8" id="at-skip">Marcar sin datos</button>` : ""}`,
       sheet => {
         sheet.querySelector("#at-save").onclick = () => {
           const min = parseInt(sheet.querySelector("#at-min").value, 10);
@@ -2828,10 +2860,17 @@ const Sheets = {
           if (!min || min < 5 || min > 300) return UI.toast("Poné entre 5 y 300 minutos");
           if (date > today) return UI.toast("La fecha no puede ser futura");
           const day = { ...(Store.s.dailyDone[date] || {}) };
-          day.extra = [...(day.extra || []), { id: "x" + Date.now().toString(36), type: sheet.querySelector("#at-type").value, min, rpe: +sheet.querySelector("#at-rpe").value }];
+          const km = parseFloat(String(sheet.querySelector("#at-km").value).replace(",", "."));
+          const type = sheet.querySelector("#at-type").value;
+          const entry = { id: "x" + Date.now().toString(36), type, min, rpe: +sheet.querySelector("#at-rpe").value };
+          if (km > 0 && km <= 200) entry.km = Math.round(km * 10) / 10;
+          day.extra = [...(day.extra || []), entry];
+          if (type === "caminata") day.caminata = true;
           Store.s.dailyDone[date] = day; Store.commit(); UI.closeSheet(); Router.render();
           UI.toast("Actividad registrada");
         };
+        const sk = sheet.querySelector("#at-skip");
+        if (sk) sk.onclick = () => { const d = { ...(Store.s.dailyDone[today] || {}), caminata: true }; Store.s.dailyDone[today] = d; Store.commit(); UI.closeSheet(); Router.render(); };
       });
   },
 
