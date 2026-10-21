@@ -511,7 +511,7 @@ code { border-radius: 0; }
 /* ==========================================================================
    CONFIG — dominio
    ========================================================================== */
-const APP_VERSION = "v23 · 21/10";   // subir junto con CACHE en sw.js
+const APP_VERSION = "v24 · 21/10";   // subir junto con CACHE en sw.js
 
 const CONFIG = {
   version: 1,
@@ -2910,9 +2910,40 @@ const Sheets = {
           if (type === "caminata") day.caminata = true;
           Store.s.dailyDone[date] = day; Store.commit(); UI.closeSheet(); Router.render();
           UI.toast("Actividad registrada");
+          if (date === today && type !== "calentamiento") setTimeout(() => Sheets.postWorkout(), 700);
         };
         const sk = sheet.querySelector("#at-skip");
         if (sk) sk.onclick = () => { const d = { ...(Store.s.dailyDone[today] || {}), caminata: true }; Store.s.dailyDone[today] = d; Store.commit(); UI.closeSheet(); Router.render(); };
+      });
+  },
+
+  // Al terminar de entrenar o correr: ofrece tildar elongación y movilidad del día
+  postWorkout() {
+    const today = Dates.todayKey();
+    const ids = ["movilidad", "elongacion"].filter(id => Cfg.daily.some(d => d.id === id));
+    const day = Store.s.dailyDone[today] || {};
+    const pend = Cfg.daily.filter(d => ids.includes(d.id) && !day[d.id]);
+    if (!pend.length) return;
+    UI.openSheet(`
+      <h3>¿Elongaste y movilizaste?</h3>
+      <p class="dimtext small" style="margin-top:-8px; margin-bottom:14px">Tocá lo que ya hiciste.</p>
+      <div class="card" style="margin:0 0 14px">
+        ${pend.map(d => `
+          <div class="item" data-pw="${d.id}" role="button" tabindex="0">
+            <div class="body"><div class="name">${d.name}</div><div class="meta">${d.meta}</div></div>
+            <div class="end"><div class="check">${UI.checkSVG}</div></div>
+          </div>`).join("")}
+      </div>
+      <button class="btn mint" id="pw-save">Guardar</button>
+      <button class="btn ghost mt8" id="pw-skip">Ahora no</button>`,
+      sheet => {
+        sheet.querySelectorAll("[data-pw]").forEach(el => el.onclick = () => el.querySelector(".check").classList.toggle("on"));
+        sheet.querySelector("#pw-skip").onclick = () => UI.closeSheet();
+        sheet.querySelector("#pw-save").onclick = () => {
+          const d = { ...(Store.s.dailyDone[today] || {}) };
+          sheet.querySelectorAll("[data-pw]").forEach(el => { if (el.querySelector(".check.on")) d[el.dataset.pw] = true; });
+          Store.s.dailyDone[today] = d; Store.commit(); UI.closeSheet(); Router.render();
+        };
       });
   },
 
@@ -3117,6 +3148,10 @@ const Sheets = {
         Store.commit(); UI.closeSheet(); Router.render();
         if (before && now > before) UI.toast("", `<span style="color:var(--green)">▲</span> +${Math.round(now - before)} vs. la sesión anterior`);
         else UI.toast("Ejercicio guardado ✓");
+        {
+          const ss = (Subviews._pickDay === today && Subviews._pick ? Plan.sessionById(Subviews._pick, today) : null) || Plan.inferSession(w, today) || Plan.sessionFor(today);
+          if (ss && ss.ex.every(id => w.exercises[id]?.sets?.length)) setTimeout(() => Sheets.postWorkout(), 700);
+        }
         if (exId === "dominada") {
           const bestNow = Math.max(...clean.map(s => s.v));
           const bestPrev = Math.max(Cfg.baseline.pullupReps, ...Pullup.repsHistory().filter(h => h.date !== today).map(h => h.reps));
