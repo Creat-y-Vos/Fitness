@@ -135,6 +135,7 @@ nav.tabbar button.active svg { stroke: var(--mint); }
    Primitivas
    ========================================================================== */
 .screen { animation: rise .45s var(--ease) both; }
+.screen.still { animation: none; }
 @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
@@ -509,7 +510,7 @@ code { border-radius: 0; }
 /* ==========================================================================
    CONFIG — dominio
    ========================================================================== */
-const APP_VERSION = "v21 · 21/10";   // subir junto con CACHE en sw.js
+const APP_VERSION = "v22 · 21/10";   // subir junto con CACHE en sw.js
 
 const CONFIG = {
   version: 1,
@@ -2042,21 +2043,33 @@ const UI = {
   },
 
   /* Modal tipo hoja */
+  _closing: null,
   openSheet(html, onMount) {
     const root = document.getElementById("modalRoot");
     const sheet = document.getElementById("sheet");
+    if (UI._closing) { clearTimeout(UI._closing); UI._closing = null; }
+    sheet.style.transition = ""; sheet.style.transform = "";
+    root.querySelector(".scrim").style.opacity = "";
     sheet.innerHTML = `<div class="grab"></div>` + html;
     root.classList.add("open");
     root.setAttribute("aria-hidden", "false");
     if (onMount) onMount(sheet);
   },
+  // Se desliza hacia abajo y recién después se cierra
   closeSheet() {
     const root = document.getElementById("modalRoot");
-    const sh = document.getElementById("sheet");
-    if (sh) { sh.style.transition = ""; sh.style.transform = ""; }
-    root.classList.remove("open");
-    root.setAttribute("aria-hidden", "true");
-    document.getElementById("sheet").innerHTML = "";
+    if (!root.classList.contains("open") || UI._closing) return;
+    const sh = document.getElementById("sheet"), sc = root.querySelector(".scrim");
+    sh.style.transition = "transform .25s cubic-bezier(.4,0,1,1)";
+    sh.style.transform = "translateY(100%)";
+    sc.style.transition = "opacity .25s ease"; sc.style.opacity = "0";
+    UI._closing = setTimeout(() => {
+      UI._closing = null;
+      sh.style.transition = ""; sh.style.transform = ""; sc.style.opacity = ""; sc.style.transition = "";
+      root.classList.remove("open");
+      root.setAttribute("aria-hidden", "true");
+      sh.innerHTML = "";
+    }, 260);
   },
 
   stepper(id, value, { min = 0, max = 999, step = 1, label = "" } = {}) {
@@ -2108,9 +2121,8 @@ const UI = {
   }, { passive: false });
   const end = () => {
     if (!drag) { y0 = null; return; }
-    sh.style.transition = "transform .2s ease";
-    if (dy > 110) { sh.style.transform = "translateY(100%)"; setTimeout(() => UI.closeSheet(), 180); }
-    else sh.style.transform = "";
+    if (dy > 110) UI.closeSheet();
+    else { sh.style.transition = "transform .2s ease"; sh.style.transform = ""; }
     y0 = null; drag = false;
   };
   sh.addEventListener("touchend", end);
@@ -3351,11 +3363,15 @@ const Router = (() => {
     if (Gate.locked()) return Gate.show();
     Gate.hide();
     const key = current + "|" + sub, y = window.scrollY, same = key === lastKey;
+    const app = document.getElementById("app");
+    if (same) app.style.minHeight = app.offsetHeight + "px";   // evita que la página "salte" mientras se redibuja
     renderTabs();
-    Screens[current](document.getElementById("app"), sub);
+    Screens[current](app, sub);
     lastKey = key;
-    // Mismo lugar (marcar un check, guardar algo): conserva el scroll. Cambio de pantalla: arriba.
+    // Mismo lugar (marcar un check, guardar algo): sin animación de entrada y con el mismo scroll. Cambio de pantalla: arriba.
+    if (same) app.querySelectorAll(".screen").forEach(el => el.classList.add("still"));
     window.scrollTo({ top: same ? y : 0 });
+    app.style.minHeight = "";
   }
   function go(tab, s = null) { current = tab; sub = s; lastKey = null; render(); }
 
