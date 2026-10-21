@@ -509,7 +509,7 @@ code { border-radius: 0; }
 /* ==========================================================================
    CONFIG — dominio
    ========================================================================== */
-const APP_VERSION = "v18 · 20/10";   // subir junto con CACHE en sw.js
+const APP_VERSION = "v19 · 21/10";   // subir junto con CACHE en sw.js
 
 const CONFIG = {
   version: 1,
@@ -1270,9 +1270,14 @@ const Coach = {
     if (cur > 0 && kg > 0) msgs.push(`Hoy pesás <em>${cur} kg</em>. El número importa menos que la tendencia, y la tendencia la escribís vos.`);
 
     // Fondo general para días sin datos suficientes
-    msgs.push(`El plan es simple: entrenar, sumar de a poco, caminar, comer bien. Lo difícil es hacerlo un martes cualquiera. Hoy es ese martes.`);
-    msgs.push(`Nadie ve las series que hacés hoy. Todos van a ver la espalda que tenés en diciembre.`);
-    msgs.push(`La dominada no se consigue el día que sale: se consigue todos los días anteriores.`);
+    msgs.push(`El plan es simple: entrenar, sumar de a poco, caminar, comer bien. Lo difícil es hacerlo un día cualquiera. Hoy es uno de esos días.`);
+    if (Cfg.pullups) {
+      msgs.push(`Nadie ve las series que hacés hoy. Todos van a ver la espalda que tenés en diciembre.`);
+      msgs.push(`La dominada no se consigue el día que sale: se consigue todos los días anteriores.`);
+    } else {
+      msgs.push(`Nadie ve las series que hacés hoy. Todos van a notar cómo te sentís en diciembre.`);
+      msgs.push(`Un día flojo no arruina nada. Lo que cuenta es volver a la próxima sesión.`);
+    }
     msgs.push(`Entrená como si ya fueras la persona que querés ser en diciembre. El cuerpo alcanza a la conducta.`);
     return msgs;
   },
@@ -2201,7 +2206,7 @@ Screens.hoy = function (root) {
         </div>`).join("")}</div>` : "";
     })()}
 
-    <button class="btn ghost" data-logactivity>Registrar fútbol u otra actividad</button>
+    <button class="btn ghost" data-logactivity>Registrar otra actividad</button>
     <button class="btn ghost mt8" data-logweight>Registrar peso de hoy</button>
   </div>`;
 
@@ -2789,11 +2794,11 @@ Subviews.stats = function (root) {
     { lbl: "Entrenamientos", v: Workouts.daysTrained(), u: "" },
     { lbl: "Series totales", v: Stats.totalSets(), u: "" },
     { lbl: "Repeticiones", v: Stats.totalReps(), u: "" },
-    { lbl: "Tiempo colgado", v: Math.round(Stats.totalHangSecs() / 60 * 10) / 10, u: "min" },
+    ...(Cfg.pullups ? [{ lbl: "Tiempo colgado", v: Math.round(Stats.totalHangSecs() / 60 * 10) / 10, u: "min" }] : []),
     { lbl: "Peso perdido", v: Progress.lostKg().toFixed(1), u: "kg" },
     { lbl: "Racha actual", v: Workouts.trainingStreak(), u: "" },
     { lbl: "Días entrenados", v: Workouts.daysTrained(), u: "" },
-    { lbl: "Dominada estimada", v: pred.ready && !pred.stalled ? Dates.fmt(pred.dateKey) : "—", u: "" },
+    ...(Cfg.pullups ? [{ lbl: "Dominada estimada", v: pred.ready && !pred.stalled ? Dates.fmt(pred.dateKey) : "—", u: "" }] : []),
   ];
   root.innerHTML = `
     <div class="statgrid">
@@ -2844,7 +2849,7 @@ const Sheets = {
     UI.openSheet(`
       <h3>Registrar actividad</h3>
       <div class="field"><label>Qué hiciste</label>
-        <select id="at-type">${Object.entries(Sheets.ACT).map(([k, n]) => `<option value="${k}" ${k === o.type ? "selected" : ""}>${n}</option>`).join("")}</select></div>
+        <select id="at-type">${Object.entries(Sheets.ACT).filter(([k]) => !Cfg.activities || Cfg.activities.includes(k)).map(([k, n]) => `<option value="${k}" ${k === o.type ? "selected" : ""}>${n}</option>`).join("")}</select></div>
       <div class="field"><label>Cuántos minutos</label>
         <input type="number" inputmode="numeric" id="at-min" min="5" max="300" value="${o.min || 60}"></div>
       <div class="field"><label>Distancia en km (opcional)</label>
