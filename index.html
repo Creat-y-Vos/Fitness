@@ -314,7 +314,7 @@ h2 {
   background: var(--surface); border: 1px solid var(--line-strong); border-bottom: none;
   border-radius: 24px 24px 0 0;
   padding: 14px 20px calc(24px + env(safe-area-inset-bottom));
-  max-height: 88dvh; overflow-y: auto;
+  max-height: 88dvh; overflow-y: auto; overscroll-behavior: contain;
   animation: sheetUp .4s var(--ease) both;
 }
 @keyframes sheetUp { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
@@ -509,7 +509,7 @@ code { border-radius: 0; }
 /* ==========================================================================
    CONFIG — dominio
    ========================================================================== */
-const APP_VERSION = "v20 · 21/10";   // subir junto con CACHE en sw.js
+const APP_VERSION = "v21 · 21/10";   // subir junto con CACHE en sw.js
 
 const CONFIG = {
   version: 1,
@@ -2052,6 +2052,8 @@ const UI = {
   },
   closeSheet() {
     const root = document.getElementById("modalRoot");
+    const sh = document.getElementById("sheet");
+    if (sh) { sh.style.transition = ""; sh.style.transform = ""; }
     root.classList.remove("open");
     root.setAttribute("aria-hidden", "true");
     document.getElementById("sheet").innerHTML = "";
@@ -2092,6 +2094,28 @@ const UI = {
     });
   },
 };
+
+/* Deslizar la hoja hacia abajo para cerrarla (solo si está arriba de todo) */
+(function () {
+  const sh = document.getElementById("sheet");
+  let y0 = null, dy = 0, drag = false;
+  sh.addEventListener("touchstart", e => { y0 = e.touches[0].clientY; dy = 0; drag = false; }, { passive: true });
+  sh.addEventListener("touchmove", e => {
+    if (y0 === null) return;
+    dy = e.touches[0].clientY - y0;
+    if (!drag && dy > 8 && sh.scrollTop <= 0) { drag = true; sh.style.transition = "none"; }
+    if (drag) { e.preventDefault(); sh.style.transform = `translateY(${Math.max(0, dy)}px)`; }
+  }, { passive: false });
+  const end = () => {
+    if (!drag) { y0 = null; return; }
+    sh.style.transition = "transform .2s ease";
+    if (dy > 110) { sh.style.transform = "translateY(100%)"; setTimeout(() => UI.closeSheet(), 180); }
+    else sh.style.transform = "";
+    y0 = null; drag = false;
+  };
+  sh.addEventListener("touchend", end);
+  sh.addEventListener("touchcancel", end);
+})();
 
 document.getElementById("modalRoot").addEventListener("click", e => {
   if (e.target.hasAttribute("data-close")) UI.closeSheet();
@@ -3322,14 +3346,18 @@ const Router = (() => {
       </button>`).join("");
     box.querySelectorAll("[data-tab]").forEach(b => b.onclick = () => go(b.dataset.tab));
   }
+  let lastKey = null;
   function render() {
     if (Gate.locked()) return Gate.show();
     Gate.hide();
+    const key = current + "|" + sub, y = window.scrollY, same = key === lastKey;
     renderTabs();
     Screens[current](document.getElementById("app"), sub);
-    window.scrollTo({ top: 0 });
+    lastKey = key;
+    // Mismo lugar (marcar un check, guardar algo): conserva el scroll. Cambio de pantalla: arriba.
+    window.scrollTo({ top: same ? y : 0 });
   }
-  function go(tab, s = null) { current = tab; sub = s; render(); }
+  function go(tab, s = null) { current = tab; sub = s; lastKey = null; render(); }
 
   return { render, go, get current() { return current; } };
 })();
