@@ -509,7 +509,7 @@ code { border-radius: 0; }
 /* ==========================================================================
    CONFIG — dominio
    ========================================================================== */
-const APP_VERSION = "v19 · 21/10";   // subir junto con CACHE en sw.js
+const APP_VERSION = "v20 · 21/10";   // subir junto con CACHE en sw.js
 
 const CONFIG = {
   version: 1,
@@ -2826,7 +2826,7 @@ Subviews.stats = function (root) {
    Sheets — modales de captura de datos
    ========================================================================== */
 const Sheets = {
-  ACT: { futbol: "Fútbol", caminata: "Caminata", trote: "Trote", bici: "Bici", otro: "Otra actividad" },
+  ACT: { futbol: "Fútbol", caminata: "Caminata", calentamiento: "Caminata de entrada en calor", trote: "Trote", bici: "Bici", otro: "Otra actividad" },
   actText(x) {
     let t = `${Sheets.ACT[x.type] || x.type} · ${x.min} min`;
     if (x.km) { const p = x.min / x.km; t = `${Sheets.ACT[x.type] || x.type} · ${String(x.km).replace(".", ",")} km · ${x.min} min · ${Math.floor(p)}:${String(Math.round((p % 1) * 60)).padStart(2, "0")} min/km`.replace(":60 ", ":59 "); }
