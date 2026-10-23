@@ -511,7 +511,7 @@ code { border-radius: 0; }
 /* ==========================================================================
    CONFIG — dominio
    ========================================================================== */
-const APP_VERSION = "v25 · 22/10";   // subir junto con CACHE en sw.js
+const APP_VERSION = "v26 · 23/10";   // subir junto con CACHE en sw.js
 
 const CONFIG = {
   version: 1,
@@ -1326,6 +1326,14 @@ const AI = {
     }).join(", ");
     return [
       `Objetivo: ${Cfg.goal.coachText}${Cfg.pullups ? ` (meta de dominadas estrictas: ${Cfg.goal.pullupTarget} reps en una serie)` : ""}, para ${p.targetDateISO}. Peso ${p.startWeight} → ${p.targetWeight} kg.`,
+      (() => {
+        const bits = [];
+        if (p.sex) bits.push(p.sex === "m" ? "hombre" : "mujer");
+        if (p.birthYear) bits.push(`${new Date().getFullYear() - p.birthYear} años`);
+        if (p.heightCm) bits.push(`${p.heightCm} cm de altura`);
+        if (p.heightCm && lm && lm.cintura) bits.push(`cintura/altura ${(lm.cintura / p.heightCm).toFixed(2)}`);
+        return bits.length ? `Perfil: ${bits.join(", ")}.` : "";
+      })(),
       `Fase del plan: ${Plan.started() ? `${ph.id} (${ph.name}) — ${Plan.progressText()}` : "la vuelta todavía no empezó (fase 1 al arrancar)"}. Regla de la fase: ${ph.rule}`,
       `Peso (últimos registros): ${weights}. Actual: ${Progress.currentKg()} kg.`,
       `Medidas (última): ${measures}.`,
@@ -3219,6 +3227,16 @@ const Sheets = {
         <div class="field"><label>Peso objetivo (kg)</label><input type="number" step="0.1" id="tw" value="${p.targetWeight}"></div>
       </div>
       <div class="field"><label>Fecha objetivo</label><input type="date" id="td" value="${p.targetDateISO}"></div>
+      <div class="grid2">
+        <div class="field"><label>Altura (cm)</label><input type="number" inputmode="numeric" min="100" max="230" id="ph" value="${p.heightCm || ""}" placeholder="ej. 175"></div>
+        <div class="field"><label>Sexo</label>
+          <select id="ps">
+            <option value="" ${!p.sex ? "selected" : ""}>Sin indicar</option>
+            <option value="m" ${p.sex === "m" ? "selected" : ""}>Hombre</option>
+            <option value="f" ${p.sex === "f" ? "selected" : ""}>Mujer</option>
+          </select></div>
+      </div>
+      <div class="field"><label>Año de nacimiento (opcional)</label><input type="number" inputmode="numeric" min="1930" max="2015" id="pb" value="${p.birthYear || ""}" placeholder="ej. 1985"></div>
       <button class="btn" id="psave">Guardar ajustes</button>
       <h2 style="margin-left:0">Plan de entrenamiento</h2>
       <div class="field"><label>Inicio de la vuelta (fase 1)</label><input type="date" id="rd" value="${p.returnDate || ""}"></div>
@@ -3285,6 +3303,10 @@ const Sheets = {
           if (sw > 0) p.startWeight = sw;
           if (tw > 0) p.targetWeight = tw;
           if (td) p.targetDateISO = td;
+          const hc = parseInt(sheet.querySelector("#ph").value, 10), by = parseInt(sheet.querySelector("#pb").value, 10), sx = sheet.querySelector("#ps").value;
+          p.heightCm = hc >= 100 && hc <= 230 ? hc : null;
+          p.birthYear = by >= 1930 && by <= 2015 ? by : null;
+          p.sex = sx === "m" || sx === "f" ? sx : null;
           Conn.set({ geminiKey: sheet.querySelector("#gk").value.trim() });
           const su = sheet.querySelector("#su"), sk = sheet.querySelector("#sk");
           if (su && sk) Conn.set({ supabaseUrl: su.value.trim(), supabaseKey: sk.value.trim() });
