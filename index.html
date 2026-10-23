@@ -511,7 +511,7 @@ code { border-radius: 0; }
 /* ==========================================================================
    CONFIG — dominio
    ========================================================================== */
-const APP_VERSION = "v26 · 23/10";   // subir junto con CACHE en sw.js
+const APP_VERSION = "v27 · 23/10";   // subir junto con CACHE en sw.js
 
 const CONFIG = {
   version: 1,
@@ -1024,6 +1024,10 @@ const Progress = {
   goalPct() {
     return Cfg.pullups ? Math.round(this.weightPct() * 0.5 + Pullup.pct() * 0.5) : Math.round(this.weightPct());
   },
+  // Índice de masa corporal (OMS). Necesita la altura del perfil.
+  bmi(kg) { const h = Store.s.profile.heightCm; return h > 0 && kg > 0 ? kg / Math.pow(h / 100, 2) : null; },
+  bmiLabel(v) { return v < 18.5 ? "Bajo peso" : v < 25 ? "Peso normal" : v < 30 ? "Sobrepeso" : "Obesidad"; },
+  bmiRange() { const h = Store.s.profile.heightCm; if (!(h > 0)) return null; const m2 = Math.pow(h / 100, 2); return [18.5 * m2, 24.9 * m2]; },
   weekTrend() {
     const w = [...Store.s.weights].sort((a,b) => a.date < b.date ? -1 : 1);
     if (w.length < 2) return null;
@@ -2660,6 +2664,22 @@ Subviews.peso = function (root) {
       </div>
       <button class="btn mint mt14" data-add>Registrar peso</button>
     </div>
+    ${(() => {
+      const f1 = v => v.toFixed(1).replace(".", ",");
+      const h = p.heightCm;
+      if (!h) return `<h2>Índice de masa corporal</h2><div class="card"><p class="dimtext small">Cargá tu altura para ver tu IMC.</p><button class="btn ghost mt8" data-height>Cargar altura en Ajustes</button></div>`;
+      const v = Progress.bmi(cur), r = Progress.bmiRange(), vt = Progress.bmi(p.targetWeight);
+      const lm = [...Store.s.measurements].sort((a, b) => a.date < b.date ? -1 : 1).filter(m => m.cintura != null).pop();
+      return `<h2>Índice de masa corporal</h2><div class="card">
+        <div class="row">
+          <div class="metric xl"><span class="n">${f1(v)}</span><span class="u">IMC</span></div>
+          <div style="text-align:right"><div style="font-weight:650">${Progress.bmiLabel(v)}</div><div class="dimtext small mt8">Con ${p.targetWeight} kg: ${f1(vt)}</div></div>
+        </div>
+        <p class="dimtext small mt14">Para ${h} cm, el rango normal (18,5 a 24,9) va de ${r[0].toFixed(0)} a ${r[1].toFixed(0)} kg.</p>
+        ${lm ? `<p class="dimtext small mt8">Cintura / altura: <strong>${(lm.cintura / h).toFixed(2).replace(".", ",")}</strong> (${lm.cintura} cm). Por debajo de 0,50 es lo saludable.</p>` : ""}
+        <p class="dimtext small mt8">El IMC no distingue músculo de grasa: mirá siempre la cintura y tu fuerza junto con el número.</p>
+      </div>`;
+    })()}
     ${w.length ? `
     <h2>Registros</h2>
     <div class="card">
@@ -2671,6 +2691,7 @@ Subviews.peso = function (root) {
         </div>`).join("")}
     </div>` : ""}`;
   root.querySelector("[data-add]").onclick = () => Sheets.logWeight();
+  const hb = root.querySelector("[data-height]"); if (hb) hb.onclick = () => Sheets.settings();
   root.querySelectorAll("[data-delw]").forEach(b => b.onclick = () => {
     Store.s.weights = Store.s.weights.filter(x => x.date !== b.dataset.delw);
     Store.commit(); Router.render();
