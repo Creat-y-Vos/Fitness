@@ -1,5 +1,5 @@
 // Fitness — service worker. Subí el número de versión para forzar la actualización del caché.
-const CACHE = "vform-v28";
+const CACHE = "vform-v29";
 const SHELL = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png", "logo.jpg"];
 
 self.addEventListener("install", e => {

@@ -19,7 +19,7 @@ Cada ejercicio de una sesión se guarda como `{ sets: [{kg, v}], obs }` dentro d
 - **El agarre se guarda por ejercicio dentro de la sesión (`grip`), no por serie.** Fabi hace una variante por ejercicio y sesión; por serie complicaría la hoja sin aportar. Alternativa descartada: campo en cada serie.
 - **Valores `prono`, `neutro`, `supino`; ausencia = prono.** Evita migrar datos y mantiene compatibles los registros previos.
 - **Solo el prono alimenta `bestReps`, el récord y el `pullupTarget`.** Los otros agarres se calculan aparte con la misma lógica.
-- **La vista `workout_sets` suma `e.val ->> 'grip'`** (con prono por defecto). Es un `CREATE OR REPLACE VIEW` que agrega una columna al final, sin romper consultas existentes.
+- **La vista `workout_sets` suma `e.val ->> 'grip'`** (con prono por defecto). Es un `CREATE OR REPLACE VIEW` que agrega una columna al final, sin romper consultas existentes. Ojo: `CREATE OR REPLACE VIEW` pierde `security_invoker=true`; hay que volver a aplicarlo con `ALTER VIEW ... SET (security_invoker = true)` (ya hecho y verificado).
 - **Sin cambios en tablas ni RLS.** El campo vive dentro del jsonb existente.
 - Dibujos del agarre: SVG en línea dentro del index.html (sin imágenes externas, funcionan offline). Vista frontal de la barra con las manos: prono = palmas hacia afuera, neutro = palmas enfrentadas, supino = palmas hacia uno. Trazo con `currentColor` para tema claro/oscuro. Cada opción lleva dibujo y nombre.
 
