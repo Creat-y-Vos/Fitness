@@ -21,11 +21,10 @@ Cada ejercicio de una sesión se guarda como `{ sets: [{kg, v}], obs }` dentro d
 - **Solo el prono alimenta `bestReps`, el récord y el `pullupTarget`.** Los otros agarres se calculan aparte con la misma lógica.
 - **La vista `workout_sets` suma `e.val ->> 'grip'`** (con prono por defecto). Es un `CREATE OR REPLACE VIEW` que agrega una columna al final, sin romper consultas existentes.
 - **Sin cambios en tablas ni RLS.** El campo vive dentro del jsonb existente.
+- Dibujos del agarre: SVG en línea dentro del index.html (sin imágenes externas, funcionan offline). Vista frontal de la barra con las manos: prono = palmas hacia afuera, neutro = palmas enfrentadas, supino = palmas hacia uno. Trazo con `currentColor` para tema claro/oscuro. Cada opción lleva dibujo y nombre.
 
 ## Risks / Trade-offs
 
 - Registros viejos hechos en neutro quedan como prono hasta que el usuario los corrija; mitigación: editar esas sesiones a mano (se pregunta cuáles en la tarea 4).
 - Dos dispositivos con versiones distintas: el viejo ignora `grip` y lo puede perder al guardar el mismo ejercicio. Mitigación: tarea de versión y caché, y avisar que se abra la app dos veces.
 - Más campos en la hoja del ejercicio: el selector va solo en dominadas para no ensuciar los demás.
-
-- Dibujos del agarre: SVG en línea dentro del index.html (sin imágenes externas, funcionan offline). Vista frontal de la barra con las manos: prono = palmas hacia afuera, neutro = palmas enfrentadas, supino = palmas hacia uno. Trazo con `currentColor` para tema claro/oscuro. Cada opción lleva dibujo y nombre.
