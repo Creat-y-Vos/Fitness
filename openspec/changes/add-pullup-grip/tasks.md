@@ -8,7 +8,8 @@
 ## 2. Registro en la app
 
 - [ ] 2.1 Agregar el selector de agarre (prono, neutro, supino) a la hoja de `dominada` y `dominada-asist`, con prono por defecto
-- [ ] 2.2 Guardar `grip` junto a `sets` y `obs` y cargarlo al reabrir el ejercicio
+- [ ] 2.2 Dibujar tres íconos SVG en línea (prono, neutro, supino) en el estilo de la app, legibles en tema claro y oscuro, y usarlos en el selector
+- [ ] 2.3 Guardar `grip` junto a `sets` y `obs` y cargarlo al reabrir el ejercicio
 
 ## 3. Cálculo y vistas
 

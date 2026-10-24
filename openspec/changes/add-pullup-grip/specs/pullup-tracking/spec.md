@@ -18,6 +18,17 @@ El sistema SHALL tratar como prono cualquier registro de dominada que no tenga a
 - **WHEN** existe una sesión guardada antes de esta función
 - **THEN** sus series cuentan como prono
 
+### Requirement: Ilustración del agarre
+El selector de agarre SHALL mostrar junto a cada opción un dibujo de la posición de las manos y su nombre, de modo que cualquier persona identifique el agarre sin conocer los términos. Los dibujos SHALL verse bien en tema claro y oscuro y SHALL ser parte de la app, sin depender de la red.
+
+#### Scenario: Elegir mirando el dibujo
+- **WHEN** el usuario abre la hoja de una dominada
+- **THEN** ve las tres opciones con su dibujo y nombre, y la elegida queda resaltada
+
+#### Scenario: Sin conexión
+- **WHEN** el usuario abre el selector sin red
+- **THEN** los dibujos se muestran igual
+
 ## MODIFIED Requirements
 
 ### Requirement: Dominada estricta

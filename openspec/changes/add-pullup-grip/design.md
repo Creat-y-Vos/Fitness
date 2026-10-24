@@ -27,3 +27,5 @@ Cada ejercicio de una sesión se guarda como `{ sets: [{kg, v}], obs }` dentro d
 - Registros viejos hechos en neutro quedan como prono hasta que el usuario los corrija; mitigación: editar esas sesiones a mano (se pregunta cuáles en la tarea 4).
 - Dos dispositivos con versiones distintas: el viejo ignora `grip` y lo puede perder al guardar el mismo ejercicio. Mitigación: tarea de versión y caché, y avisar que se abra la app dos veces.
 - Más campos en la hoja del ejercicio: el selector va solo en dominadas para no ensuciar los demás.
+
+- Dibujos del agarre: SVG en línea dentro del index.html (sin imágenes externas, funcionan offline). Vista frontal de la barra con las manos: prono = palmas hacia afuera, neutro = palmas enfrentadas, supino = palmas hacia uno. Trazo con `currentColor` para tema claro/oscuro. Cada opción lleva dibujo y nombre.
