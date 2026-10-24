@@ -12,4 +12,4 @@
 ## 3. Verificación y publicación
 
 - [x] 3.1 Probar en el navegador: nueva versión del service worker provoca una recarga; con hoja abierta espera; la primera instalación no recarga
-- [ ] 3.2 Subir `APP_VERSION` y el caché, publicar y archivar
+- [x] 3.2 Subir `APP_VERSION` y el caché, publicar y archivar

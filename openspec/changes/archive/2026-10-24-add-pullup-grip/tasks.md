@@ -20,10 +20,10 @@
 ## 4. Coach semanal
 
 - [x] 4.1 Actualizar el prompt de la tarea semanal para comparar por agarre (prono como referencia)
-- [ ] 4.2 Preguntar a Fabi qué sesiones de esta semana fueron neutro y marcarlas
+- [x] 4.2 Preguntar a Fabi qué sesiones de esta semana fueron neutro y marcarlas
 
 ## 5. Verificación y publicación
 
 - [x] 5.1 Probar en el navegador: guardar en cada agarre, reabrir, récord solo en prono
 - [x] 5.2 Probar que una sesión sin `grip` se lee como prono
-- [ ] 5.3 Subir `APP_VERSION` y el caché del service worker, publicar y archivar el cambio
+- [x] 5.3 Subir `APP_VERSION` y el caché del service worker, publicar y archivar el cambio
