@@ -21,7 +21,7 @@ Cada ejercicio de una sesión se guarda como `{ sets: [{kg, v}], obs }` dentro d
 - **Solo el prono alimenta `bestReps`, el récord y el `pullupTarget`.** Los otros agarres se calculan aparte con la misma lógica.
 - **La vista `workout_sets` suma `e.val ->> 'grip'`** (con prono por defecto). Es un `CREATE OR REPLACE VIEW` que agrega una columna al final, sin romper consultas existentes. Ojo: `CREATE OR REPLACE VIEW` pierde `security_invoker=true`; hay que volver a aplicarlo con `ALTER VIEW ... SET (security_invoker = true)` (ya hecho y verificado).
 - **Sin cambios en tablas ni RLS.** El campo vive dentro del jsonb existente.
-- Dibujos del agarre: SVG en línea dentro del index.html (sin imágenes externas, funcionan offline). Vista frontal de la barra con las manos: prono = palmas hacia afuera, neutro = palmas enfrentadas, supino = palmas hacia uno. Trazo con `currentColor` para tema claro/oscuro. Cada opción lleva dibujo y nombre.
+- Dibujos del agarre: SVG en línea dentro del index.html (sin imágenes externas, funcionan offline). Son manos dibujadas (palma, dedos y pulgar) vistas desde arriba sobre la barra, con una silueta de la persona abajo como referencia: prono = dedos hacia adelante y pulgar hacia vos; supino = dedos hacia vos y pulgar hacia adelante; neutro = asas paralelas con los dedos hacia adentro. Trazo con `currentColor`. Un primer intento con manos como cajas y flechas no se entendía; se descartó.
 
 ## Risks / Trade-offs
 

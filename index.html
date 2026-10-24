@@ -292,7 +292,7 @@ h2 {
 /* Selector de agarre de dominadas */
 .gripsel { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0 0 16px; }
 .gripsel button { border: 1px solid var(--line-strong); background: transparent; color: var(--dim); padding: 10px 4px 9px; display: flex; flex-direction: column; align-items: center; gap: 5px; font-family: var(--font); transition: all .2s var(--ease); }
-.gripsel button svg { width: 72px; height: 50px; display: block; }
+.gripsel button svg { width: 78px; height: 56px; display: block; }
 .gripsel button b { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
 .gripsel button small { font-size: 10.5px; line-height: 1.25; text-align: center; opacity: .85; }
 .gripsel button.on { border-color: var(--accent); color: var(--text); background: rgba(255,90,31,.09); }
@@ -528,7 +528,7 @@ code { border-radius: 0; }
 /* ==========================================================================
    CONFIG — dominio
    ========================================================================== */
-const APP_VERSION = "v29 · 24/10";   // subir junto con CACHE en sw.js
+const APP_VERSION = "v30 · 24/10";   // subir junto con CACHE en sw.js
 
 const CONFIG = {
   version: 1,
@@ -1135,23 +1135,23 @@ const Grip = {
   has(exId) { return exId === "dominada" || exId === "dominada-asist"; },
   of(w, exId) { const g = w?.exercises?.[exId]?.grip; return this.list.some(x => x.id === g) ? g : "prono"; },
   name(id) { return (this.list.find(x => x.id === id) || this.list[0]).name; },
-  // Vista desde arriba: la barra, las manos, una flecha desde cada palma (hacia dónde mira) y vos abajo
+  // Vista desde arriba: la barra, dos manos con sus dedos y pulgar, y vos abajo de referencia.
+  // Prono: dedos hacia adelante, pulgar hacia vos. Supino: al revés. Neutro: asas paralelas, dedos hacia adentro.
   svg(id) {
-    const head = (x, y, dir) => dir === "up" ? `<path d="M${x} ${y + 9}V${y}m-3 3L${x} ${y}l3 3"/>` : dir === "down" ? `<path d="M${x} ${y}v9m-3-3l3 3 3-3"/>` : dir === "right" ? `<path d="M${x} ${y}h8m-3-3l3 3-3 3"/>` : `<path d="M${x} ${y}h-8m3-3l-3 3 3 3"/>`;
-    const me = `<g opacity=".5"><circle cx="36" cy="41" r="3.6"/><path d="M19 48c2-8 9-10 17-10s15 2 17 10"/></g>`;
+    const hand = `<rect x="-5" y="-4" width="10" height="9" rx="2.6"/>`
+      + [[-3.75, 8.5], [-1.25, 10.5], [1.25, 10], [3.75, 8]].map(([x, l]) => `<rect x="${x - 1.15}" y="${-4 - l}" width="2.3" height="${l + 1}" rx="1.15"/>`).join("")
+      + `<rect x="4.4" y="1" width="2.6" height="7.5" rx="1.3" transform="rotate(-32 5.7 2.2)"/>`;
+    const me = `<g opacity=".45"><circle cx="36" cy="43" r="3.4"/><path d="M19 50c2-7 9-9 17-9s15 2 17 9"/></g>`;
     let body;
     if (id === "neutro") {
-      body = `<path d="M20 8v24M52 8v24" stroke-width="3"/>
-        <rect x="16.5" y="14" width="7" height="12" rx="2.5" fill="currentColor" fill-opacity=".28"/><rect x="48.5" y="14" width="7" height="12" rx="2.5" fill="currentColor" fill-opacity=".28"/>
-        ${head(26, 20, "right")}${head(46, 20, "left")}`;
+      body = `<path d="M25 11v26M47 11v26" stroke-width="3"/>
+        <g transform="translate(19 24) scale(1 -1) rotate(90)">${hand}</g><g transform="translate(53 24) scale(-1 -1) rotate(90)">${hand}</g>`;
     } else {
-      const dir = id === "prono" ? "up" : "down";
-      const ay = dir === "up" ? 3 : 27;
-      body = `<path d="M4 20h64" stroke-width="3"/>
-        <rect x="14" y="16" width="12" height="8" rx="2.5" fill="currentColor" fill-opacity=".28"/><rect x="46" y="16" width="12" height="8" rx="2.5" fill="currentColor" fill-opacity=".28"/>
-        ${head(20, dir === "up" ? 3 : 27, dir)}${head(52, dir === "up" ? 3 : 27, dir)}`;
+      const rot = id === "supino" ? " rotate(180)" : "";
+      body = `<path d="M4 24h13M27 24h18M55 24h13" stroke-width="3"/>
+        <g transform="translate(22 24)${rot}">${hand}</g><g transform="translate(50 24) scale(-1 1)${rot}">${hand}</g>`;
     }
-    return `<svg viewBox="0 0 72 50" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}${me}</svg>`;
+    return `<svg viewBox="0 0 72 52" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}${me}</svg>`;
   },
   picker(sel) {
     return `<div class="gripsel" role="radiogroup" aria-label="Agarre">${this.list.map(g => `
@@ -3641,7 +3641,30 @@ const Router = (() => {
 <script>
 // Instalable y con respaldo sin conexión (solo cuando se sirve por http/https)
 if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) {
-  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+  // Actualización automática: al haber una versión nueva, la app se recarga sola (sin interrumpir ni perder datos)
+  const hadController = !!navigator.serviceWorker.controller;
+  let reloading = false;
+  const reloadWhenIdle = async () => {
+    if (reloading) return;
+    const sheetOpen = document.getElementById("modalRoot")?.classList.contains("open");
+    const ae = document.activeElement;
+    const typing = ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName);
+    if (sheetOpen || typing) return setTimeout(reloadWhenIdle, 3000);
+    reloading = true;
+    try {
+      if (typeof Auth !== "undefined" && Auth.user && Sync.configured()) await Promise.race([Sync.push(), new Promise(r => setTimeout(r, 3000))]);
+    } catch (_) {}
+    location.reload();
+  };
+  navigator.serviceWorker.addEventListener("controllerchange", () => { if (hadController) reloadWhenIdle(); });
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then(reg => {
+      const check = () => reg.update().catch(() => {});
+      check();
+      document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") check(); });
+      setInterval(check, 30 * 60 * 1000);
+    }).catch(() => {});
+  });
 }
 </script>
 </body>
