@@ -528,7 +528,7 @@ code { border-radius: 0; }
 /* ==========================================================================
    CONFIG — dominio
    ========================================================================== */
-const APP_VERSION = "v30 · 24/10";   // subir junto con CACHE en sw.js
+const APP_VERSION = "v31 · 26/10";   // subir junto con CACHE en sw.js
 
 const CONFIG = {
   version: 1,
@@ -984,10 +984,11 @@ const Plan = {
   // Sesión que mejor coincide con lo registrado en un entreno
   inferSession(w, key) {
     const logged = Object.keys(w?.exercises || {});
+    const planned = this.sessionFor(key)?.id;   // en empate gana la sesión que toca por el plan
     let best = 0, id = null;
     Object.entries(Cfg.plan.sessions).forEach(([sid, x]) => {
       const n = logged.filter(e => x.ex.includes(e)).length;
-      if (n > best) { best = n; id = sid; }
+      if (n > best || (n > 0 && n === best && sid === planned)) { best = n; id = sid; }
     });
     return id ? this.sessionById(id, key) : null;
   },
