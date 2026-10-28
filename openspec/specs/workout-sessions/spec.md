@@ -63,7 +63,7 @@ Cuando el sistema deduce la sesión de un día a partir de los ejercicios ya reg
 - **THEN** se muestra esa otra sesión
 
 ### Requirement: Temporizador de descanso
-El sistema SHALL mostrar un temporizador de descanso flotante, visible en toda la app mientras corre, SHALL iniciarlo al agregar una serie con "＋ Serie" y mediante un botón "Descanso", y SHALL permitir sumar o restar 15 segundos y cerrarlo. Al llegar a cero SHALL avisar con vibración y un sonido corto, salvo que el usuario los haya desactivado en Ajustes.
+El sistema SHALL mostrar un temporizador de descanso flotante, visible en toda la app mientras corre, SHALL iniciarlo al agregar una serie con "＋ Serie" y mediante un botón "Descanso", y SHALL permitir sumar o restar 15 segundos y cerrarlo. Mientras corre SHALL mantener la pantalla encendida cuando el dispositivo lo permita. Al llegar a cero SHALL avisar con una vibración marcada y tres pitidos audibles también por auriculares conectados, salvo que el usuario los haya desactivado en Ajustes.
 
 #### Scenario: Arranque al agregar una serie
 - **WHEN** el usuario toca "＋ Serie" en la hoja de un ejercicio
@@ -84,3 +84,34 @@ El sistema SHALL mostrar un temporizador de descanso flotante, visible en toda l
 #### Scenario: Sin avisos
 - **WHEN** el usuario desactivó vibración y sonido
 - **THEN** al llegar a cero el temporizador no vibra ni suena y solo muestra "listo"
+
+#### Scenario: Pantalla encendida durante el descanso
+- **WHEN** corre un descanso
+- **THEN** la pantalla se mantiene encendida hasta que termina o se cierra, y se libera después
+
+#### Scenario: Aviso al terminar
+- **WHEN** el descanso llega a cero con los avisos activos
+- **THEN** el dispositivo vibra con un patrón largo y suenan tres pitidos precedidos de un tono suave
+
+### Requirement: Borrador del ejercicio en edición
+El sistema SHALL conservar en el dispositivo lo cargado en la hoja de un ejercicio (series, observaciones y agarre) aunque el usuario salga sin guardar, y SHALL recuperarlo al abrir ese ejercicio el mismo día. El borrador NO SHALL contar para el progreso, los récords ni el historial hasta que se guarde.
+
+#### Scenario: Salir sin guardar
+- **WHEN** el usuario carga series, cierra la hoja sin guardar y vuelve a abrir el ejercicio el mismo día
+- **THEN** ve las mismas series y observaciones, con un aviso de que son un borrador sin guardar
+
+#### Scenario: Guardar borra el borrador
+- **WHEN** el usuario guarda el ejercicio
+- **THEN** el borrador desaparece y al reabrir se ve lo guardado
+
+#### Scenario: Descartar
+- **WHEN** el usuario toca "Descartar borrador"
+- **THEN** el borrador se borra y la hoja vuelve a lo guardado, o a una serie vacía si no hay nada guardado
+
+#### Scenario: Otro día
+- **WHEN** existe un borrador de un día anterior
+- **THEN** no se usa y se elimina
+
+#### Scenario: Sin efecto en el progreso
+- **WHEN** hay un borrador sin guardar
+- **THEN** no aparece en el historial ni cambia récords ni comparaciones

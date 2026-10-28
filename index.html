@@ -536,7 +536,7 @@ code { border-radius: 0; }
 /* ==========================================================================
    CONFIG — dominio
    ========================================================================== */
-const APP_VERSION = "v32 · 28/10";   // subir junto con CACHE en sw.js
+const APP_VERSION = "v33 · 28/10";   // subir junto con CACHE en sw.js
 
 const CONFIG = {
   version: 1,
@@ -2994,9 +2994,24 @@ Subviews.stats = function (root) {
 /* ==========================================================================
    Sheets — modales de captura de datos
    ========================================================================== */
+/* ---- Borradores de ejercicio (solo en este dispositivo, no se sincronizan) ---- */
+const Drafts = {
+  KEY: "vform.drafts",
+  all() {
+    let d = {}; try { d = JSON.parse(localStorage.getItem(this.KEY) || "{}") || {}; } catch (_) {}
+    const today = Dates.todayKey();
+    Object.keys(d).forEach(k => { if (!k.startsWith(today + "|")) delete d[k]; });   // solo los de hoy
+    return d;
+  },
+  write(d) { try { Object.keys(d).length ? localStorage.setItem(this.KEY, JSON.stringify(d)) : localStorage.removeItem(this.KEY); } catch (_) {} },
+  get(exId) { return this.all()[Dates.todayKey() + "|" + exId] || null; },
+  save(exId, data) { const d = this.all(); d[Dates.todayKey() + "|" + exId] = { ...data, ts: Date.now() }; this.write(d); },
+  clear(exId) { const d = this.all(); delete d[Dates.todayKey() + "|" + exId]; this.write(d); },
+};
+
 /* ---- Temporizador de descanso (flotante, a nivel de app) ---- */
 const Rest = {
-  endAt: 0, label: "", done: false, alerted: false, _iv: null, _ctx: null,
+  endAt: 0, label: "", done: false, alerted: false, _iv: null, _ctx: null, _wl: null,
   HEAVY: ["dominada", "dominada-asist", "banca", "prensa", "remo", "jalon", "jalon-abierto", "press-hombros", "inclinado", "pecho-maq", "fondos"],
   prefs() {
     let p = {}; try { p = JSON.parse(localStorage.getItem("vform.rest") || "{}"); } catch (_) {}
@@ -3010,6 +3025,15 @@ const Rest = {
     if (ex.type === "secs" || ["crunch", "plancha"].includes(ex.id)) return 45;
     return this.HEAVY.includes(ex.id) ? 120 : 75;
   },
+  // Pantalla encendida mientras corre el descanso (si el navegador lo permite)
+  async lock() {
+    try {
+      if (!navigator.wakeLock || this._wl) return;
+      this._wl = await navigator.wakeLock.request("screen");
+      this._wl.addEventListener && this._wl.addEventListener("release", () => { this._wl = null; });
+    } catch (_) { this._wl = null; }
+  },
+  unlock() { try { this._wl && this._wl.release(); } catch (_) {} this._wl = null; },
   fmt(sec) { return Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0"); },
   remaining() { return Math.max(0, Math.ceil((this.endAt - Date.now()) / 1000)); },
   start(sec, label) {
@@ -3020,15 +3044,16 @@ const Rest = {
     el.querySelectorAll("button").forEach(b => b.onclick = () => b.dataset.r === "x" ? this.stop() : this.add(Number(b.dataset.r)));
     el.classList.add("show"); el.classList.remove("done");
     clearInterval(this._iv); this._iv = setInterval(() => this.tick(), 250);
+    this.lock();
     this.tick();
   },
   add(sec) {
     if (!this.endAt) return;
-    if (this.done) { if (sec <= 0) return; this.endAt = Date.now() + sec * 1000; this.done = false; this.alerted = false; document.getElementById("rest").classList.remove("done"); if (!this._iv) this._iv = setInterval(() => this.tick(), 250); }
+    if (this.done) { if (sec <= 0) return; this.endAt = Date.now() + sec * 1000; this.done = false; this.alerted = false; document.getElementById("rest").classList.remove("done"); if (!this._iv) this._iv = setInterval(() => this.tick(), 250); this.lock(); }
     else this.endAt = Math.max(Date.now() + 1000, this.endAt + sec * 1000);
     this.tick();
   },
-  stop() { clearInterval(this._iv); this._iv = null; this.endAt = 0; this.done = false; const el = document.getElementById("rest"); el.classList.remove("show", "done"); el.innerHTML = ""; },
+  stop() { clearInterval(this._iv); this._iv = null; this.unlock(); this.endAt = 0; this.done = false; const el = document.getElementById("rest"); el.classList.remove("show", "done"); el.innerHTML = ""; },
   tick() {
     const el = document.getElementById("rest"); if (!this.endAt || !el) return;
     const left = this.remaining();
@@ -3037,6 +3062,7 @@ const Rest = {
     if (t) t.textContent = "Listo";
     el.classList.add("done"); this.done = true;
     clearInterval(this._iv); this._iv = null;
+    this.unlock();
     if (!this.alerted) {
       this.alerted = true;
       if (Date.now() - this.endAt < 10000) this.alert();   // si volvió tarde, solo muestra "Listo"
@@ -3044,22 +3070,27 @@ const Rest = {
   },
   alert() {
     const p = this.prefs();
-    if (p.vibrate) { try { navigator.vibrate && navigator.vibrate([200, 100, 200]); } catch (_) {} }
+    if (p.vibrate) { try { navigator.vibrate && navigator.vibrate([400, 150, 400, 150, 400]); } catch (_) {} }
     if (p.sound) this.beep();
   },
+  // Tono suave previo (despierta auriculares inalámbricos, que recortan el comienzo) y tres pitidos
   beep() {
     try {
       const c = this._ctx; if (!c) return;
-      [0, 0.28].forEach(d => {
+      if (c.state === "suspended") c.resume();
+      const t0 = c.currentTime + 0.05;
+      const tone = (f, at, dur, vol) => {
         const o = c.createOscillator(), g = c.createGain();
-        o.type = "sine"; o.frequency.value = 880; o.connect(g); g.connect(c.destination);
-        const t0 = c.currentTime + d; g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.4, t0 + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.22);
-        o.start(t0); o.stop(t0 + 0.25);
-      });
+        o.type = "sine"; o.frequency.value = f; o.connect(g); g.connect(c.destination);
+        const st = t0 + at; g.gain.setValueAtTime(0.0001, st); g.gain.exponentialRampToValueAtTime(vol, st + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, st + dur);
+        o.start(st); o.stop(st + dur + 0.03);
+      };
+      tone(440, 0, 0.3, 0.05);
+      [0.45, 0.95, 1.45].forEach(at => tone(880, at, 0.32, 0.6));
     } catch (_) {}
   },
 };
-document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") Rest.tick(); });
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { if (Rest.endAt && !Rest.done) Rest.lock(); Rest.tick(); } });
 
 const Sheets = {
   ACT: { futbol: "Fútbol", caminata: "Caminata", calentamiento: "Caminata de entrada en calor", trote: "Trote", bici: "Bici", otro: "Otra actividad" },
@@ -3243,8 +3274,10 @@ const Sheets = {
     const kgMode = ex.type === "kgreps";
     const saved = w?.exercises?.[exId]?.sets || [];
     const last = Workouts.lastSets(exId, today);
-    const obs = w?.exercises?.[exId]?.obs || "";
+    let obs = w?.exercises?.[exId]?.obs || "";
     let grip = Grip.of(w, exId);
+    const draft = Drafts.get(exId);   // lo que había en pantalla la última vez, aunque no se guardó
+    if (draft) { obs = draft.obs || ""; if (Grip.has(exId) && Grip.list.some(x => x.id === draft.grip)) grip = draft.grip; }
     const sugKg = kgMode ? Plan.suggestKg(ex, today) : null;
     const nTarget = Plan.setsFor(ex, today);
     // Carga inicial: la de la fase (sugerida); en la fase 3, la de la última vez
@@ -3252,12 +3285,16 @@ const Sheets = {
       ? ((Plan.phaseId(today) === 3 && last.length) ? (last[last.length - 1].kg ?? 0) : (sugKg ?? (last.length ? last[last.length - 1].kg : 0) ?? 0))
       : 0;
     const defV = last.length ? last[last.length - 1].v : (parseInt(ex.reps, 10) || (ex.type === "secs" ? 30 : 8));
-    const sets = saved.length
+    const sets = draft?.sets?.length
+      ? draft.sets.map(s => ({ ...s }))
+      : saved.length
       ? saved.map(s => ({ ...s }))
       : [{ kg: defKg, v: defV }];   // arranca con una; con ＋ Serie se agregan las que hagan falta
     const unit = ex.type === "secs" ? "segundos" : "repeticiones";
 
-    let tick = null, runIdx = -1, t0 = 0;
+    let tick = null, runIdx = -1, t0 = 0, closed = false, draftT = null;
+    const snapshot = () => JSON.stringify([sets.map(x => ({ kg: x.kg ?? 0, v: x.v })), (document.getElementById("obs")?.value ?? obs), grip]);
+    const initial = JSON.stringify([sets.map(x => ({ kg: x.kg ?? 0, v: x.v })), obs, grip]);
     const pull = () => {
       const sh = document.getElementById("sheet");
       sets.forEach((s, i) => {
@@ -3274,6 +3311,7 @@ const Sheets = {
         <div class="grab"></div>
         <h3>${ex.icon} ${ex.name}</h3>
         <p class="dimtext small" style="margin-top:-10px; margin-bottom:14px">${ex.cue}</p>
+        ${draft ? `<div class="dimtext small" id="draftnote" style="margin:-4px 0 14px">Retomaste lo que tenías sin guardar. <button type="button" class="btn ghost small" id="draftdiscard" style="display:inline-flex;min-height:30px;padding:0 10px;margin-left:6px">Descartar borrador</button></div>` : ""}
         <div class="coach" style="margin:0 0 16px">
           Objetivo: <em>${nTarget} × ${ex.reps || ""}</em>${sugKg != null ? ` · ~<em>${sugKg} ${ex.unit}</em>` : ""}
           ${last.length ? `<br>Última vez: <strong>${Ex.setText(ex, last)}</strong>${kgMode ? ` (${ex.unit} × reps)` : ""}` : ""}
@@ -3306,6 +3344,8 @@ const Sheets = {
         ${w?.exercises?.[exId] ? `<button class="btn danger mt8" id="exclear">Quitar de la sesión</button>` : ""}`;
 
       UI.bindSteppers(sheet);
+      const dd = sheet.querySelector("#draftdiscard");
+      if (dd) dd.onclick = () => { closed = true; Drafts.clear(exId); UI.closeSheet(); setTimeout(() => Sheets.exercise(exId), 320); };
       sheet.querySelectorAll("[data-grip]").forEach(b => b.onclick = () => {
         grip = b.dataset.grip;
         sheet.querySelectorAll("[data-grip]").forEach(x => { const on = x.dataset.grip === grip; x.classList.toggle("on", on); x.setAttribute("aria-checked", on); });
@@ -3350,6 +3390,7 @@ const Sheets = {
           w = { id: "w" + Date.now(), date: today, exercises: {} };
           Store.s.workouts.push(w);
         }
+        closed = true; clearTimeout(draftT); Drafts.clear(exId);
         w.exercises[exId] = { sets: clean, obs: document.getElementById("obs").value.trim(), ...(Grip.has(exId) ? { grip } : {}) };
         const now = Workouts.metric(w, ex);
         Store.commit(); UI.closeSheet(); Router.render();
@@ -3372,13 +3413,32 @@ const Sheets = {
       };
       const clear = sheet.querySelector("#exclear");
       if (clear) clear.onclick = () => {
+        closed = true; clearTimeout(draftT); Drafts.clear(exId);
         delete w.exercises[exId];
         if (!Object.keys(w.exercises).length) Store.s.workouts = Store.s.workouts.filter(x => x.id !== w.id);
         Store.commit(); UI.closeSheet(); Router.render();
       };
     };
 
-    UI.openSheet("", () => render());
+    // Autoguardado del borrador: cualquier cambio en la hoja (los selectores numéricos emiten "change" sin burbujeo, por eso captura)
+    const autosave = () => {
+      if (closed) return;
+      clearTimeout(draftT);
+      draftT = setTimeout(() => {
+        const sh = document.getElementById("sheet");
+        if (closed || !sh || !sh.querySelector("#exsave") || sh._ex !== exId) return;   // la hoja ya es otra
+        pull();
+        if (!draft && snapshot() === initial) return;   // sin cambios reales: no hay nada que guardar
+        Drafts.save(exId, { sets: sets.map(x => ({ ...x })), obs: document.getElementById("obs")?.value || "", ...(Grip.has(exId) ? { grip } : {}) });
+      }, 120);
+    };
+    UI.openSheet("", sh => {
+      sh._ex = exId;
+      if (sh._draftH) ["input", "change", "click"].forEach(ev => sh.removeEventListener(ev, sh._draftH, true));
+      sh._draftH = autosave;
+      ["input", "change", "click"].forEach(ev => sh.addEventListener(ev, autosave, true));
+      render();
+    });
   },
 
   /* Coach IA: analiza tu progreso real y ajusta la rutina de la semana */
