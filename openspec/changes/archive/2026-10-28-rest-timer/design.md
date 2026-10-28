@@ -6,7 +6,7 @@ La hoja del ejercicio se cierra al guardar y se reabre por ejercicio, así que u
 
 ## Decisions
 
-- **Componente flotante único** sobre la barra inferior, con tiempo restante, +15 s, −15 s y cerrar. Un solo temporizador a la vez: iniciar otro reemplaza al anterior.
+- **Componente flotante único** arriba y centrado (no abajo: ahí tapaba los botones de la hoja del ejercicio), por encima de las hojas, con tiempo restante, +15 s, −15 s y cerrar. Un solo temporizador a la vez: iniciar otro reemplaza al anterior.
 - **Disparador**: tocar "＋ Serie" arranca el descanso; además hay un botón manual "Descanso" en la hoja.
 - **Cuenta por hora de fin** (`Date.now()` contra un instante de fin), no por segundos acumulados: si la app pasa a segundo plano o el celular se bloquea, al volver muestra el valor correcto.
 - **Duraciones por defecto**: ejercicios de fuerza pesados y dominadas 120 s; accesorios 75 s; core y ejercicios por tiempo 45 s. Un ejercicio puede traer `rest` (segundos) en la configuración y eso manda. Son valores de partida, no una prescripción del plan.
