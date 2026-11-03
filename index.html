@@ -536,7 +536,7 @@ code { border-radius: 0; }
 /* ==========================================================================
    CONFIG — dominio
    ========================================================================== */
-const APP_VERSION = "v40 · 03/11";   // subir junto con CACHE en sw.js
+const APP_VERSION = "v41 · 03/11";   // subir junto con CACHE en sw.js
 
 const CONFIG = {
   version: 1,
@@ -3565,6 +3565,7 @@ const Sheets = {
         {
           const ss = (Subviews._pickDay === today && Subviews._pick ? Plan.sessionById(Subviews._pick, today) : null) || Plan.inferSession(w, today) || Plan.sessionFor(today);
           if (ss && ss.ex.every(id => w.exercises[id]?.sets?.length)) setTimeout(() => Sheets.postWorkout(), 700);
+          else Rest.start(Rest.defaultFor(ex), ex.name);   // descanso tras la última serie, antes del próximo ejercicio
         }
         if (exId === "dominada") {
           const bestNow = Math.max(...clean.map(s => s.v));
