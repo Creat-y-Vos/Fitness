@@ -536,7 +536,7 @@ code { border-radius: 0; }
 /* ==========================================================================
    CONFIG — dominio
    ========================================================================== */
-const APP_VERSION = "v36 · 03/11";   // subir junto con CACHE en sw.js
+const APP_VERSION = "v37 · 03/11";   // subir junto con CACHE en sw.js
 
 const CONFIG = {
   version: 1,
@@ -2346,6 +2346,7 @@ Screens.hoy = function (root) {
           <div class="end"><div class="check ${daily[d.id] ? "on" : ""}">${UI.checkSVG}</div></div>
         </div>`).join("")}
     </div>
+    ${Cfg.daily.some(d => d.id === "elongacion") ? `<button class="btn ghost mt8" data-stretch>▶ Elongación guiada · 12 s + 3 s</button>` : ""}
 
     ${(() => {
       const rec = [];
@@ -2383,6 +2384,7 @@ Screens.hoy = function (root) {
     Router.go(tab, sub);
   });
   root.querySelector("[data-logweight]").onclick = () => Sheets.logWeight();
+  const stBtn = root.querySelector("[data-stretch]"); if (stBtn) stBtn.onclick = () => Stretch.open();
   root.querySelector("[data-logactivity]").onclick = () => Sheets.activity();
   root.querySelectorAll("[data-extra]").forEach(el => el.onclick = () => {
     const [date, id] = el.dataset.extra.split("|");
@@ -3137,6 +3139,100 @@ const Rest = {
 };
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { if (Rest.endAt && !Rest.done) Rest.lock(); Rest.tick(); } });
 
+// Elongación guiada: 12 s de pose y 3 s de cambio
+const Stretch = {
+  HOLD: 12, GAP: 3,
+  DEFAULT: [
+    { n: "Isquios", sides: 2 }, { n: "Aductores", sides: 1 }, { n: "Gemelos", sides: 2 }, { n: "Cuádriceps", sides: 2 },
+    { n: "Flexores de cadera", sides: 2 }, { n: "Pecho", sides: 1 }, { n: "Tríceps", sides: 2 }, { n: "Hombros", sides: 2 },
+    { n: "Antebrazo", sides: 2 }, { n: "Lateral de cintura", sides: 2 }
+  ],
+  blocks() {
+    const cfg = (Cfg.daily || []).find(d => d.id === "elongacion");
+    const r = Array.isArray(cfg?.routine) && cfg.routine.length ? cfg.routine : this.DEFAULT;
+    const out = [];
+    r.forEach(x => (+x.sides === 2 ? ["izquierda", "derecha"] : [""]).forEach(side => out.push({ n: x.n, side })));
+    return out;
+  },
+  _tone(f, at, dur, vol) {
+    const c = Rest._ctx; if (!c) return;
+    try {
+      if (c.state === "suspended") c.resume();
+      const o = c.createOscillator(), g = c.createGain(), st = c.currentTime + 0.02 + at;
+      o.type = "sine"; o.frequency.value = f; o.connect(g); g.connect(c.destination);
+      g.gain.setValueAtTime(0.0001, st); g.gain.exponentialRampToValueAtTime(vol, st + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, st + dur);
+      o.start(st); o.stop(st + dur + 0.03);
+    } catch (_) {}
+  },
+  _vib(pat) { if (Rest.prefs().vibrate) { try { navigator.vibrate && navigator.vibrate(pat); } catch (_) {} } },
+  _snd(fn) { if (Rest.prefs().sound) fn(); },
+  open() {
+    try { Rest._ctx = Rest._ctx || new (window.AudioContext || window.webkitAudioContext)(); if (Rest._ctx.state === "suspended") Rest._ctx.resume(); } catch (_) {}
+    const bl = this.blocks();
+    UI.openSheet(`
+      <h3>Elongación</h3>
+      <div style="text-align:center; margin:4px 0 14px">
+        <div id="st-phase" class="dimtext small" style="letter-spacing:.12em; text-transform:uppercase"></div>
+        <div id="st-name" style="font-size:24px; font-weight:700; margin-top:6px"></div>
+        <div id="st-side" class="dimtext" style="min-height:22px"></div>
+        <div id="st-time" style="font-size:96px; line-height:1.05; font-weight:700; font-variant-numeric:tabular-nums; margin:6px 0"></div>
+        <div id="st-next" class="dimtext small" style="min-height:20px"></div>
+        <div id="st-prog" class="dimtext small" style="margin-top:4px"></div>
+      </div>
+      <button class="btn mint" id="st-pause">Pausa</button>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px">
+        <button class="btn ghost" id="st-skip">Saltar</button>
+        <button class="btn ghost" id="st-close">Cerrar</button>
+      </div>`,
+      sheet => {
+        const $ = id => sheet.querySelector(id);
+        let i = 0, phase = "gap", endAt = 0, paused = false, remMs = 0, lastLeft = -1, finished = false, iv = null;
+        const begin = (idx, ph) => {
+          i = idx; phase = ph; lastLeft = -1;
+          endAt = Date.now() + (ph === "gap" ? this.GAP : this.HOLD) * 1000;
+          $("#st-time").textContent = ph === "gap" ? this.GAP : this.HOLD;
+          const b = bl[i];
+          $("#st-name").textContent = b.n; $("#st-side").textContent = b.side ? "lado " + b.side : "";
+          $("#st-phase").textContent = ph === "gap" ? "Preparate" : "Estirá";
+          $("#st-next").textContent = ph === "gap" ? "" : (bl[i + 1] ? "Sigue: " + bl[i + 1].n + (bl[i + 1].side ? " (" + bl[i + 1].side + ")" : "") : "Última");
+          $("#st-prog").textContent = `${i + 1} de ${bl.length}`;
+          if (ph === "hold") { this._snd(() => this._tone(880, 0, 0.28, 0.5)); this._vib(200); }
+        };
+        const stop = () => { clearInterval(iv); iv = null; Rest.unlock(); };
+        const finish = () => {
+          finished = true; stop();
+          $("#st-phase").textContent = "Listo"; $("#st-name").textContent = "Elongación completa"; $("#st-side").textContent = ""; $("#st-time").textContent = "✓";
+          $("#st-next").textContent = ""; $("#st-prog").textContent = `${bl.length} de ${bl.length}`;
+          $("#st-pause").style.display = "none"; $("#st-skip").style.display = "none"; $("#st-close").textContent = "Cerrar";
+          this._snd(() => [0, 0.3, 0.6].forEach(at => this._tone(880, at, 0.22, 0.5))); this._vib([300, 120, 300]);
+          const today = Dates.todayKey();
+          Store.s.dailyDone[today] = { ...(Store.s.dailyDone[today] || {}), elongacion: true }; Store.commit(); Router.render();
+          UI.toast("Elongación marcada");
+        };
+        const next = () => { if (phase === "gap") begin(i, "hold"); else if (i + 1 < bl.length) begin(i + 1, "gap"); else finish(); };
+        const tick = () => {
+          if (!sheet.isConnected || !document.getElementById("st-time")) return stop();   // se cerró la hoja
+          if (paused || finished) return;
+          const ms = endAt - Date.now(), left = Math.max(0, Math.ceil(ms / 1000));
+          if (left !== lastLeft) {
+            lastLeft = left;
+            if (phase === "gap" && left >= 1 && left <= 3) { this._snd(() => this._tone(660, 0, 0.09, 0.35)); }
+          }
+          $("#st-time").textContent = left;
+          if (ms <= 0) next();
+        };
+        $("#st-pause").onclick = () => {
+          if (finished) return;
+          if (!paused) { paused = true; remMs = Math.max(0, endAt - Date.now()); $("#st-pause").textContent = "Seguir"; }
+          else { paused = false; endAt = Date.now() + remMs; $("#st-pause").textContent = "Pausa"; Rest.lock(); }
+        };
+        $("#st-skip").onclick = () => { if (!finished) { if (phase === "gap") begin(i, "hold"); else next(); } };
+        $("#st-close").onclick = () => { stop(); UI.closeSheet(); };
+        begin(0, "gap"); Rest.lock(); iv = setInterval(tick, 100); tick();
+      });
+  }
+};
+
 // Teclado: la hoja se levanta por encima y el campo enfocado queda a la vista
 const Keyboard = {
   update() {
@@ -3230,8 +3326,10 @@ const Sheets = {
           </div>`).join("")}
       </div>
       <button class="btn mint" id="pw-save">Guardar</button>
+      ${pend.some(d => d.id === "elongacion") ? `<button class="btn ghost mt8" id="pw-stretch">▶ Elongar con cronómetro</button>` : ""}
       <button class="btn ghost mt8" id="pw-skip">Ahora no</button>`,
       sheet => {
+        const gs = sheet.querySelector("#pw-stretch"); if (gs) gs.onclick = () => { UI.closeSheet(); setTimeout(() => Stretch.open(), 350); };
         sheet.querySelectorAll("[data-pw]").forEach(el => el.onclick = () => el.querySelector(".check").classList.toggle("on"));
         sheet.querySelector("#pw-skip").onclick = () => UI.closeSheet();
         sheet.querySelector("#pw-save").onclick = () => {
