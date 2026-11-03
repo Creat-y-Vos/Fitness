@@ -536,7 +536,7 @@ code { border-radius: 0; }
 /* ==========================================================================
    CONFIG — dominio
    ========================================================================== */
-const APP_VERSION = "v35 · 31/10";   // subir junto con CACHE en sw.js
+const APP_VERSION = "v36 · 03/11";   // subir junto con CACHE en sw.js
 
 const CONFIG = {
   version: 1,
@@ -1005,6 +1005,10 @@ const Plan = {
   suggestKg(ex, key) {
     if (ex.ref == null) return null;
     const f = ex.noScale ? 1 : this.phase(key).factor;
+    if (Array.isArray(ex.stack) && ex.stack.length) {   // pila de máquina: la carga más cercana de la lista
+      const want = ex.ref * f;
+      return [...ex.stack].map(Number).sort((a, b) => a - b).reduce((b, x) => Math.abs(x - want) < Math.abs(b - want) ? x : b);
+    }
     const st = ex.step || 1;
     return +(Math.round(ex.ref * f / st) * st).toFixed(2);
   },
@@ -2175,9 +2179,10 @@ const UI = {
     }, 260);
   },
 
-  stepper(id, value, { min = 0, max = 999, step = 1, label = "" } = {}) {
+  stepper(id, value, { min = 0, max = 999, step = 1, label = "", stack = null } = {}) {
+    const st = Array.isArray(stack) && stack.length ? ` data-stack='${JSON.stringify([...stack].map(Number).sort((a, b) => a - b))}'` : "";
     return `
-      <div class="stepper" data-stepper="${id}" data-min="${min}" data-max="${max}" data-step="${step}">
+      <div class="stepper" data-stepper="${id}" data-min="${min}" data-max="${max}" data-step="${step}"${st}>
         <button type="button" data-dec aria-label="Restar">−</button>
         <input type="number" inputmode="decimal" step="${step}" value="${value}" aria-label="${label}">
         <button type="button" data-inc aria-label="Sumar">+</button>
@@ -2188,7 +2193,13 @@ const UI = {
       const input = st.querySelector("input");
       const step = +st.dataset.step || 1;
       const clamp = v => +Math.max(+st.dataset.min, Math.min(+st.dataset.max, v)).toFixed(2);
-      const bump = dir => { input.value = clamp((+input.value || 0) + dir * step); input.dispatchEvent(new Event("change")); };
+      const stack = st.dataset.stack ? JSON.parse(st.dataset.stack) : null;
+      const next = (cur, dir) => {   // pila: salta a la carga siguiente o anterior de la máquina
+        if (dir > 0) return stack.find(x => x > cur + 0.01) ?? cur;
+        const lower = stack.filter(x => x < cur - 0.01);
+        return lower.length ? lower[lower.length - 1] : 0;
+      };
+      const bump = dir => { const cur = +input.value || 0; input.value = clamp(stack ? next(cur, dir) : cur + dir * step); input.dispatchEvent(new Event("change")); };
       // Mantener presionado: repite y acelera (350 ms de espera, luego 140 → 70 → 35 ms)
       [["[data-dec]", -1], ["[data-inc]", 1]].forEach(([sel, dir]) => {
         const btn = st.querySelector(sel);
@@ -3376,7 +3387,7 @@ const Sheets = {
           ${sets.map((s, i) => kgMode ? `
             <div style="display:grid; grid-template-columns:26px 1fr 1fr; gap:8px; align-items:center; margin-bottom:8px">
               <span class="idx">${i + 1}</span>
-              ${UI.stepper("kg" + i, s.kg ?? 0, { min: 0, max: 500, step: ex.step || 1, label: `Carga serie ${i+1}` })}
+              ${UI.stepper("kg" + i, s.kg ?? 0, { min: 0, max: 500, step: ex.step || 1, stack: ex.stack, label: `Carga serie ${i+1}` })}
               ${UI.stepper("v" + i, s.v, { min: 0, max: 999, label: `Repeticiones serie ${i+1}` })}
             </div>` : `
             <div class="setrow ${ex.type === "secs" ? "chrono" : "timed"}">
