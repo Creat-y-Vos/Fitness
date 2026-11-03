@@ -536,7 +536,7 @@ code { border-radius: 0; }
 /* ==========================================================================
    CONFIG — dominio
    ========================================================================== */
-const APP_VERSION = "v39 · 03/11";   // subir junto con CACHE en sw.js
+const APP_VERSION = "v40 · 03/11";   // subir junto con CACHE en sw.js
 
 const CONFIG = {
   version: 1,
@@ -2346,7 +2346,7 @@ Screens.hoy = function (root) {
           <div class="end"><div class="check ${daily[d.id] ? "on" : ""}">${UI.checkSVG}</div></div>
         </div>`).join("")}
     </div>
-    ${Cfg.daily.some(d => d.id === "elongacion") ? `<button class="btn ghost mt8" data-stretch>▶ Elongación guiada</button>` : ""}
+    ${Cfg.daily.some(d => d.id === "elongacion") ? `<div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px"><button class="btn ghost" data-stretch>▶ Elongación completa</button><button class="btn ghost" data-stretch="short">▶ Versión corta</button></div>` : ""}
 
     ${(() => {
       const rec = [];
@@ -2384,7 +2384,7 @@ Screens.hoy = function (root) {
     Router.go(tab, sub);
   });
   root.querySelector("[data-logweight]").onclick = () => Sheets.logWeight();
-  const stBtn = root.querySelector("[data-stretch]"); if (stBtn) stBtn.onclick = () => Stretch.open();
+  root.querySelectorAll("[data-stretch]").forEach(b => b.onclick = () => Stretch.open(b.dataset.stretch === "short"));
   root.querySelector("[data-logactivity]").onclick = () => Sheets.activity();
   root.querySelectorAll("[data-extra]").forEach(el => el.onclick = () => {
     const [date, id] = el.dataset.extra.split("|");
@@ -3147,9 +3147,10 @@ const Stretch = {
     { n: "Flexores de cadera", sides: 2 }, { n: "Pecho", sides: 1 }, { n: "Tríceps", sides: 2 }, { n: "Hombros", sides: 2 },
     { n: "Antebrazo", sides: 2 }, { n: "Lateral de cintura", sides: 2 }
   ],
-  blocks() {
+  blocks(short) {
     const cfg = (Cfg.daily || []).find(d => d.id === "elongacion");
-    const r = Array.isArray(cfg?.routine) && cfg.routine.length ? cfg.routine : this.DEFAULT;
+    let r = Array.isArray(cfg?.routine) && cfg.routine.length ? cfg.routine : this.DEFAULT;
+    if (short) { const sr = r.filter(x => x.short); if (sr.length) r = sr; }
     const out = [];
     r.forEach(x => (+x.sides === 2 ? ["izquierdo", "derecho"] : [""]).forEach(side => out.push({ n: x.n, side, tip: x.tip || "", hold: Math.max(5, Math.round(+x.hold) || this.HOLD) })));
     return out;
@@ -3166,11 +3167,11 @@ const Stretch = {
   },
   _vib(pat) { if (Rest.prefs().vibrate) { try { navigator.vibrate && navigator.vibrate(pat); } catch (_) {} } },
   _snd(fn) { if (Rest.prefs().sound) fn(); },
-  open() {
+  open(short) {
     try { Rest._ctx = Rest._ctx || new (window.AudioContext || window.webkitAudioContext)(); if (Rest._ctx.state === "suspended") Rest._ctx.resume(); } catch (_) {}
-    const bl = this.blocks();
+    const bl = this.blocks(short);
     UI.openSheet(`
-      <h3>Elongación</h3>
+      <h3>Elongación${short ? " corta" : ""}</h3>
       <div style="text-align:center; margin:4px 0 14px">
         <div id="st-phase" class="dimtext small" style="letter-spacing:.12em; text-transform:uppercase"></div>
         <div id="st-name" style="font-size:24px; font-weight:700; margin-top:6px"></div>
@@ -3188,10 +3189,10 @@ const Stretch = {
       sheet => {
         const $ = id => sheet.querySelector(id);
         let i = 0, phase = "gap", endAt = 0, paused = false, remMs = 0, lastLeft = -1, finished = false, iv = null;
-        const begin = (idx, ph) => {
+        const begin = (idx, ph, from) => {
           i = idx; phase = ph; lastLeft = -1;
           const dur = ph === "gap" ? this.GAP : bl[idx].hold;
-          endAt = Date.now() + dur * 1000;
+          endAt = (from || Date.now()) + dur * 1000;   // encadenada al final de la fase anterior: sin deriva
           $("#st-time").textContent = dur;
           const b = bl[i];
           $("#st-name").textContent = b.n; $("#st-side").textContent = b.side ? "lado " + b.side : ""; $("#st-tip").textContent = b.tip || "";
@@ -3211,7 +3212,7 @@ const Stretch = {
           Store.s.dailyDone[today] = { ...(Store.s.dailyDone[today] || {}), elongacion: true }; Store.commit(); Router.render();
           UI.toast("Elongación marcada");
         };
-        const next = () => { if (phase === "gap") begin(i, "hold"); else if (i + 1 < bl.length) begin(i + 1, "gap"); else finish(); };
+        const next = from => { if (phase === "gap") begin(i, "hold", from); else if (i + 1 < bl.length) begin(i + 1, "gap", from); else finish(); };
         const tick = () => {
           if (!sheet.isConnected || !document.getElementById("st-time")) return stop();   // se cerró la hoja
           if (paused || finished) return;
@@ -3221,7 +3222,7 @@ const Stretch = {
             if (phase === "gap" && left >= 1 && left <= 3) { this._snd(() => this._tone(660, 0, 0.09, 0.35)); }
           }
           $("#st-time").textContent = left;
-          if (ms <= 0) next();
+          if (ms <= 0) next(endAt);
         };
         $("#st-pause").onclick = () => {
           if (finished) return;
