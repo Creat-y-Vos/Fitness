@@ -536,7 +536,7 @@ code { border-radius: 0; }
 /* ==========================================================================
    CONFIG — dominio
    ========================================================================== */
-const APP_VERSION = "v38 · 03/11";   // subir junto con CACHE en sw.js
+const APP_VERSION = "v39 · 03/11";   // subir junto con CACHE en sw.js
 
 const CONFIG = {
   version: 1,
@@ -2346,7 +2346,7 @@ Screens.hoy = function (root) {
           <div class="end"><div class="check ${daily[d.id] ? "on" : ""}">${UI.checkSVG}</div></div>
         </div>`).join("")}
     </div>
-    ${Cfg.daily.some(d => d.id === "elongacion") ? `<button class="btn ghost mt8" data-stretch>▶ Elongación guiada · 12 s + 3 s</button>` : ""}
+    ${Cfg.daily.some(d => d.id === "elongacion") ? `<button class="btn ghost mt8" data-stretch>▶ Elongación guiada</button>` : ""}
 
     ${(() => {
       const rec = [];
@@ -3151,7 +3151,7 @@ const Stretch = {
     const cfg = (Cfg.daily || []).find(d => d.id === "elongacion");
     const r = Array.isArray(cfg?.routine) && cfg.routine.length ? cfg.routine : this.DEFAULT;
     const out = [];
-    r.forEach(x => (+x.sides === 2 ? ["izquierdo", "derecho"] : [""]).forEach(side => out.push({ n: x.n, side, tip: x.tip || "" })));
+    r.forEach(x => (+x.sides === 2 ? ["izquierdo", "derecho"] : [""]).forEach(side => out.push({ n: x.n, side, tip: x.tip || "", hold: Math.max(5, Math.round(+x.hold) || this.HOLD) })));
     return out;
   },
   _tone(f, at, dur, vol) {
@@ -3190,8 +3190,9 @@ const Stretch = {
         let i = 0, phase = "gap", endAt = 0, paused = false, remMs = 0, lastLeft = -1, finished = false, iv = null;
         const begin = (idx, ph) => {
           i = idx; phase = ph; lastLeft = -1;
-          endAt = Date.now() + (ph === "gap" ? this.GAP : this.HOLD) * 1000;
-          $("#st-time").textContent = ph === "gap" ? this.GAP : this.HOLD;
+          const dur = ph === "gap" ? this.GAP : bl[idx].hold;
+          endAt = Date.now() + dur * 1000;
+          $("#st-time").textContent = dur;
           const b = bl[i];
           $("#st-name").textContent = b.n; $("#st-side").textContent = b.side ? "lado " + b.side : ""; $("#st-tip").textContent = b.tip || "";
           $("#st-phase").textContent = ph === "gap" ? "Preparate" : "Estirá";
