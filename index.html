@@ -536,7 +536,7 @@ code { border-radius: 0; }
 /* ==========================================================================
    CONFIG — dominio
    ========================================================================== */
-const APP_VERSION = "v37 · 03/11";   // subir junto con CACHE en sw.js
+const APP_VERSION = "v38 · 03/11";   // subir junto con CACHE en sw.js
 
 const CONFIG = {
   version: 1,
@@ -3151,7 +3151,7 @@ const Stretch = {
     const cfg = (Cfg.daily || []).find(d => d.id === "elongacion");
     const r = Array.isArray(cfg?.routine) && cfg.routine.length ? cfg.routine : this.DEFAULT;
     const out = [];
-    r.forEach(x => (+x.sides === 2 ? ["izquierda", "derecha"] : [""]).forEach(side => out.push({ n: x.n, side })));
+    r.forEach(x => (+x.sides === 2 ? ["izquierdo", "derecho"] : [""]).forEach(side => out.push({ n: x.n, side, tip: x.tip || "" })));
     return out;
   },
   _tone(f, at, dur, vol) {
@@ -3175,6 +3175,7 @@ const Stretch = {
         <div id="st-phase" class="dimtext small" style="letter-spacing:.12em; text-transform:uppercase"></div>
         <div id="st-name" style="font-size:24px; font-weight:700; margin-top:6px"></div>
         <div id="st-side" class="dimtext" style="min-height:22px"></div>
+        <div id="st-tip" class="dimtext small" style="min-height:18px; margin-top:2px"></div>
         <div id="st-time" style="font-size:96px; line-height:1.05; font-weight:700; font-variant-numeric:tabular-nums; margin:6px 0"></div>
         <div id="st-next" class="dimtext small" style="min-height:20px"></div>
         <div id="st-prog" class="dimtext small" style="margin-top:4px"></div>
@@ -3192,7 +3193,7 @@ const Stretch = {
           endAt = Date.now() + (ph === "gap" ? this.GAP : this.HOLD) * 1000;
           $("#st-time").textContent = ph === "gap" ? this.GAP : this.HOLD;
           const b = bl[i];
-          $("#st-name").textContent = b.n; $("#st-side").textContent = b.side ? "lado " + b.side : "";
+          $("#st-name").textContent = b.n; $("#st-side").textContent = b.side ? "lado " + b.side : ""; $("#st-tip").textContent = b.tip || "";
           $("#st-phase").textContent = ph === "gap" ? "Preparate" : "Estirá";
           $("#st-next").textContent = ph === "gap" ? "" : (bl[i + 1] ? "Sigue: " + bl[i + 1].n + (bl[i + 1].side ? " (" + bl[i + 1].side + ")" : "") : "Última");
           $("#st-prog").textContent = `${i + 1} de ${bl.length}`;
@@ -3201,7 +3202,7 @@ const Stretch = {
         const stop = () => { clearInterval(iv); iv = null; Rest.unlock(); };
         const finish = () => {
           finished = true; stop();
-          $("#st-phase").textContent = "Listo"; $("#st-name").textContent = "Elongación completa"; $("#st-side").textContent = ""; $("#st-time").textContent = "✓";
+          $("#st-phase").textContent = "Listo"; $("#st-name").textContent = "Elongación completa"; $("#st-side").textContent = ""; $("#st-tip").textContent = ""; $("#st-time").textContent = "✓";
           $("#st-next").textContent = ""; $("#st-prog").textContent = `${bl.length} de ${bl.length}`;
           $("#st-pause").style.display = "none"; $("#st-skip").style.display = "none"; $("#st-close").textContent = "Cerrar";
           this._snd(() => [0, 0.3, 0.6].forEach(at => this._tone(880, at, 0.22, 0.5))); this._vib([300, 120, 300]);
